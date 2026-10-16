@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ink</string>
+
+    <!-- Folders -->
+    <string name="folders_title">Folders</string>
+    <string name="folder_all_notes">All Notes</string>
+    <string name="folder_notes">Notes</string>
+    <string name="folder_recently_deleted">Recently Deleted</string>
+    <string name="folder_new">New folder</string>
+    <string name="folder_rename">Rename folder</string>
+    <string name="folder_delete">Delete folder</string>
+    <string name="folder_name_hint">Name</string>
+    <string name="folder_delete_confirm_title">Delete “%1$s”?</string>
+    <string name="folder_delete_confirm_body">Its notes will be moved to Recently Deleted.</string>
+    <string name="section_my_folders">My folders</string>
+
+    <!-- Notes list -->
+    <string name="search_hint">Search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="new_note">New note</string>
+    <string name="no_notes">No notes</string>
+    <string name="no_results">No results</string>
+    <string name="trash_empty">Nothing here</string>
+    <string name="trash_info">Notes are deleted forever after %1$d days.</string>
+    <string name="untitled">New note</string>
+    <string name="no_additional_text">No additional text</string>
+    <string name="section_pinned">Pinned</string>
+    <string name="section_today">Today</string>
+    <string name="section_yesterday">Yesterday</string>
+    <string name="section_previous_7_days">Previous 7 days</string>
+    <string name="section_previous_30_days">Previous 30 days</string>
+    <plurals name="note_count">
+        <item quantity="one">%d note</item>
+        <item quantity="other">%d notes</item>
+    </plurals>
+
+    <!-- Note actions -->
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_move">Move to folder</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_restore">Recover</string>
+    <string name="action_delete_forever">Delete now</string>
+    <string name="delete_forever_confirm_title">Delete this note?</string>
+    <string name="delete_forever_confirm_body">This can’t be undone.</string>
+    <string name="note_deleted">Note moved to Recently Deleted</string>
+    <string name="undo">Undo</string>
+    <string name="more_options">More options</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="create">Create</string>
+
+    <!-- Editor -->
+    <string name="format_text_style">Text style</string>
+    <string name="format_title">Title</string>
+    <string name="format_heading">Heading</string>
+    <string name="format_body">Body</string>
+    <string name="format_checklist">Checklist</string>
+    <string name="format_bullets">Bulleted list</string>
+    <string name="format_numbers">Numbered list</string>
+    <string name="format_bold">Bold</string>
+    <string name="format_italic">Italic</string>
+    <string name="format_underline">Underline</string>
+    <string name="format_strikethrough">Strikethrough</string>
+    <string name="format_close">Close formatting</string>
+    <string name="hide_keyboard">Done</string>
+    <string name="checklist_item">Checklist item</string>
+</resources>

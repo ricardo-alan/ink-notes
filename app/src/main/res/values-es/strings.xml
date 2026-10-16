@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ink</string>
+
+    <!-- Carpetas -->
+    <string name="folders_title">Carpetas</string>
+    <string name="folder_all_notes">Todas las notas</string>
+    <string name="folder_notes">Notas</string>
+    <string name="folder_recently_deleted">Eliminadas recientemente</string>
+    <string name="folder_new">Nueva carpeta</string>
+    <string name="folder_rename">Renombrar carpeta</string>
+    <string name="folder_delete">Eliminar carpeta</string>
+    <string name="folder_name_hint">Nombre</string>
+    <string name="folder_delete_confirm_title">¿Eliminar “%1$s”?</string>
+    <string name="folder_delete_confirm_body">Sus notas se moverán a Eliminadas recientemente.</string>
+    <string name="section_my_folders">Mis carpetas</string>
+
+    <!-- Lista de notas -->
+    <string name="search_hint">Buscar</string>
+    <string name="clear_search">Borrar búsqueda</string>
+    <string name="new_note">Nueva nota</string>
+    <string name="no_notes">No hay notas</string>
+    <string name="no_results">Sin resultados</string>
+    <string name="trash_empty">No hay nada aquí</string>
+    <string name="trash_info">Las notas se eliminan definitivamente después de %1$d días.</string>
+    <string name="untitled">Nota nueva</string>
+    <string name="no_additional_text">Sin texto adicional</string>
+    <string name="section_pinned">Fijadas</string>
+    <string name="section_today">Hoy</string>
+    <string name="section_yesterday">Ayer</string>
+    <string name="section_previous_7_days">Últimos 7 días</string>
+    <string name="section_previous_30_days">Últimos 30 días</string>
+    <plurals name="note_count">
+        <item quantity="one">%d nota</item>
+        <item quantity="other">%d notas</item>
+    </plurals>
+
+    <!-- Acciones -->
+    <string name="action_pin">Fijar</string>
+    <string name="action_unpin">Dejar de fijar</string>
+    <string name="action_move">Mover a carpeta</string>
+    <string name="action_share">Compartir</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_restore">Recuperar</string>
+    <string name="action_delete_forever">Eliminar ahora</string>
+    <string name="delete_forever_confirm_title">¿Eliminar esta nota?</string>
+    <string name="delete_forever_confirm_body">Esta acción no se puede deshacer.</string>
+    <string name="note_deleted">Nota movida a Eliminadas recientemente</string>
+    <string name="undo">Deshacer</string>
+    <string name="more_options">Más opciones</string>
+    <string name="back">Atrás</string>
+    <string name="cancel">Cancelar</string>
+    <string name="save">Guardar</string>
+    <string name="create">Crear</string>
+
+    <!-- Editor -->
+    <string name="format_text_style">Estilo de texto</string>
+    <string name="format_title">Título</string>
+    <string name="format_heading">Encabezado</string>
+    <string name="format_body">Cuerpo</string>
+    <string name="format_checklist">Lista de verificación</string>
+    <string name="format_bullets">Lista con viñetas</string>
+    <string name="format_numbers">Lista numerada</string>
+    <string name="format_bold">Negrita</string>
+    <string name="format_italic">Cursiva</string>
+    <string name="format_underline">Subrayado</string>
+    <string name="format_strikethrough">Tachado</string>
+    <string name="format_close">Cerrar formato</string>
+    <string name="hide_keyboard">Listo</string>
+    <string name="checklist_item">Elemento de la lista</string>
+</resources>
