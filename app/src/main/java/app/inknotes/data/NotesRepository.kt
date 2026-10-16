@@ -1,6 +1,7 @@
 package app.inknotes.data
 
 import app.inknotes.model.NoteContent
+import app.inknotes.model.NoteTables
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import java.text.Normalizer
@@ -41,7 +42,7 @@ class NotesRepository(
 
     suspend fun loadContent(id: String): Pair<NoteEntity, NoteContent>? {
         val note = dao.getNote(id) ?: return null
-        val content = runCatching { json.decodeFromString<NoteContent>(note.content) }.getOrDefault(NoteContent.Empty)
+        val content = runCatching { NoteTables.normalize(json.decodeFromString<NoteContent>(note.content)) }.getOrDefault(NoteContent.Empty)
         return note to content
     }
 
@@ -52,10 +53,10 @@ class NotesRepository(
         val entity = NoteEntity(
             id = id,
             folderId = existing?.folderId ?: folderId,
-            content = json.encodeToString(content),
+            content = json.encodeToString(content.copy(version = NoteContent.CURRENT_VERSION)),
             title = content.title,
             preview = content.preview,
-            searchText = normalizeForSearch(content.text),
+            searchText = normalizeForSearch(content.plainText),
             isPinned = existing?.isPinned ?: false,
             createdAt = existing?.createdAt ?: now,
             modifiedAt = now,

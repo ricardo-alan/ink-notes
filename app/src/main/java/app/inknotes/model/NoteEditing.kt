@@ -50,7 +50,7 @@ object NoteEditing {
         val lines = old.lines.subList(0, startLine) + middle + old.lines.subList(minOf(endLine + 1, old.lines.size), old.lines.size)
         val spans = shiftSpans(old.spans, prefix, oldEnd, inserted.length)
 
-        return Result(NoteContent(old.version, newText, lines, spans), selStart, selEnd)
+        return Result(old.copy(text = newText, lines = lines, spans = spans), selStart, selEnd)
     }
 
     private fun continuationOf(format: LineFormat): LineFormat = when (format.style) {
