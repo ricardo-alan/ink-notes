@@ -68,4 +68,21 @@
     <string name="format_close">Cerrar formato</string>
     <string name="hide_keyboard">Listo</string>
     <string name="checklist_item">Elemento de la lista</string>
+
+    <!-- Ajustes -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_section_sync">Sincronización</string>
+    <string name="sync_drive">Sincronizar con Google Drive</string>
+    <string name="sync_drive_summary">Ten tus notas en todos tus dispositivos</string>
+    <string name="sync_account">Con %1$s</string>
+    <string name="sync_last">Última sincronización: %1$s</string>
+    <string name="sync_never">Aún no se ha sincronizado</string>
+    <string name="sync_in_progress">Sincronizando…</string>
+    <string name="sync_now">Sincronizar</string>
+    <string name="sync_sign_in_again">Iniciar sesión</string>
+    <string name="sync_error_auth">Ink ya no puede acceder a tu Google Drive.</string>
+    <string name="sync_error_network">No se pudo conectar con Google Drive. Ink lo volverá a intentar más tarde.</string>
+    <string name="sync_error_other">La sincronización no terminó. Ink lo volverá a intentar más tarde.</string>
+    <string name="sync_connect_failed">No se pudo conectar con Google Drive</string>
+    <string name="sync_privacy_info">Las notas se guardan en una carpeta oculta de tu Google Drive que solo Ink puede abrir. Ocupan espacio de tu almacenamiento de Drive. Si desactivas la sincronización, tus notas se quedan en este dispositivo.</string>
 </resources>

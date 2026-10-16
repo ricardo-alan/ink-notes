@@ -18,10 +18,14 @@ import androidx.navigation.toRoute
 import app.inknotes.ui.editor.EditorScreen
 import app.inknotes.ui.folders.FoldersScreen
 import app.inknotes.ui.notes.NotesScreen
+import app.inknotes.ui.settings.SettingsScreen
 import kotlinx.serialization.Serializable
 
 @Serializable
 data object FoldersRoute
+
+@Serializable
+data object SettingsRoute
 
 /** [scope] is one of [NotesRoute.ALL], [NotesRoute.UNFILED], [NotesRoute.TRASH], [NotesRoute.FOLDER]. */
 @Serializable
@@ -55,7 +59,11 @@ fun InkNavHost() {
             FoldersScreen(
                 onOpen = { scope, folderId -> nav.navigate(NotesRoute(scope, folderId)) },
                 onNewNote = { nav.navigate(EditorRoute()) },
+                onOpenSettings = { nav.navigate(SettingsRoute) },
             )
+        }
+        composable<SettingsRoute> {
+            SettingsScreen(onBack = { nav.popBackStack() })
         }
         composable<NotesRoute> {
             val route = it.toRoute<NotesRoute>()

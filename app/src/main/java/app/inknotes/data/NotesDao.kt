@@ -2,6 +2,7 @@ package app.inknotes.data
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -93,4 +94,41 @@ interface NotesDao {
         """
     )
     suspend fun purgeTrashedBefore(cutoff: Long, now: Long)
+
+    // Sync: these see every row, tombstones included.
+
+    @Query("SELECT id, updatedAt FROM notes")
+    suspend fun noteStamps(): List<SyncStamp>
+
+    @Query("SELECT id, updatedAt FROM folders")
+    suspend fun folderStamps(): List<SyncStamp>
+
+    @Query("SELECT * FROM notes WHERE id IN (:ids)")
+    suspend fun notesByIds(ids: List<String>): List<NoteEntity>
+
+    @Query("SELECT * FROM folders WHERE id IN (:ids)")
+    suspend fun foldersByIds(ids: List<String>): List<FolderEntity>
+
+    @Query("SELECT updatedAt FROM notes WHERE id = :id")
+    suspend fun noteUpdatedAt(id: String): Long?
+
+    @Query("SELECT updatedAt FROM folders WHERE id = :id")
+    suspend fun folderUpdatedAt(id: String): Long?
+
+    /** Stores a row from another device unless a newer local edit landed while it was downloading. */
+    @Transaction
+    suspend fun applyRemoteNote(note: NoteEntity): Boolean {
+        val local = noteUpdatedAt(note.id)
+        if (local != null && local >= note.updatedAt) return false
+        upsertNote(note)
+        return true
+    }
+
+    @Transaction
+    suspend fun applyRemoteFolder(folder: FolderEntity): Boolean {
+        val local = folderUpdatedAt(folder.id)
+        if (local != null && local >= folder.updatedAt) return false
+        upsertFolder(folder)
+        return true
+    }
 }

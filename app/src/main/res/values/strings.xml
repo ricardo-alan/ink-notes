@@ -68,4 +68,21 @@
     <string name="format_close">Close formatting</string>
     <string name="hide_keyboard">Done</string>
     <string name="checklist_item">Checklist item</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_sync">Sync</string>
+    <string name="sync_drive">Sync with Google Drive</string>
+    <string name="sync_drive_summary">Keep your notes on all your devices</string>
+    <string name="sync_account">Using %1$s</string>
+    <string name="sync_last">Last synced %1$s</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_sign_in_again">Sign in</string>
+    <string name="sync_error_auth">Ink can’t access your Google Drive anymore.</string>
+    <string name="sync_error_network">Couldn’t reach Google Drive. Ink will try again later.</string>
+    <string name="sync_error_other">Sync didn’t finish. Ink will try again later.</string>
+    <string name="sync_connect_failed">Couldn’t connect to Google Drive</string>
+    <string name="sync_privacy_info">Notes are saved in a hidden app folder in your Google Drive that only Ink can open. They count toward your Drive storage. Turning sync off keeps your notes on this device.</string>
 </resources>
