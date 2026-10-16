@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,6 +65,7 @@ import app.inknotes.ui.common.RowDivider
 fun FoldersScreen(
     onOpen: (scope: String, folderId: String?) -> Unit,
     onNewNote: () -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: FoldersViewModel = viewModel(factory = FoldersViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -80,6 +82,9 @@ fun FoldersScreen(
                 actions = {
                     IconButton(onClick = { showCreate = true }) {
                         Icon(Icons.Outlined.CreateNewFolder, contentDescription = stringResource(R.string.folder_new))
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 scrollBehavior = scrollBehavior,

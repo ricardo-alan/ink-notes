@@ -60,3 +60,6 @@ data class FolderWithCount(
     @Embedded val folder: FolderEntity,
     val noteCount: Int,
 )
+
+/** A row's identity and version, enough to decide what needs syncing. */
+data class SyncStamp(val id: String, val updatedAt: Long)
