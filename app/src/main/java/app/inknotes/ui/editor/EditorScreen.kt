@@ -9,6 +9,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.outlined.KeyboardHide
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +61,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,6 +73,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -81,11 +90,14 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -94,8 +106,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.inknotes.R
 import app.inknotes.model.InlineStyle
 import app.inknotes.model.LineStyle
+import app.inknotes.model.NoteBlock
 import app.inknotes.model.NoteContent
 import app.inknotes.model.NoteEditing
+import app.inknotes.model.NoteTables
 import app.inknotes.ui.notes.shareNoteIntent
 import java.time.Instant
 import java.time.ZoneId
@@ -110,17 +124,13 @@ fun EditorScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    var focused by remember { mutableStateOf(false) }
+    val focused = state.focus != null
     var menu by remember { mutableStateOf(false) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushNow() }
     LaunchedEffect(state.closed) { if (state.closed) onBack() }
-    LaunchedEffect(state.loaded) {
-        if (state.loaded && state.isNew) focusRequester.requestFocus()
-    }
 
     Scaffold(
         topBar = {
@@ -151,7 +161,7 @@ fun EditorScreen(
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_share)) },
                                 leadingIcon = { Icon(Icons.Outlined.Share, null) },
-                                onClick = { menu = false; context.startActivity(shareNoteIntent(state.content.text)) },
+                                onClick = { menu = false; context.startActivity(shareNoteIntent(state.content.plainText)) },
                                 enabled = !state.content.isBlank,
                             )
                             DropdownMenuItem(
@@ -167,14 +177,7 @@ fun EditorScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()).imePadding()) {
             if (state.loaded) {
-                NoteBody(
-                    state = state,
-                    onValueChange = viewModel::onValueChange,
-                    onToggleChecked = viewModel::toggleChecked,
-                    modifier = Modifier
-                        .focusRequester(focusRequester)
-                        .onFocusChanged { focused = it.isFocused },
-                )
+                NoteBody(state = state, viewModel = viewModel)
             }
             AnimatedVisibility(
                 visible = focused,
@@ -182,53 +185,136 @@ fun EditorScreen(
                 exit = slideOutVertically { it } + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
             ) {
-                FormattingToolbar(
-                    content = state.content,
-                    selectionStart = state.field.selection.start,
-                    selectionEnd = state.field.selection.end,
-                    onLineStyle = viewModel::setLineStyle,
-                    onInline = viewModel::toggleInline,
-                )
+                if (state.focus is EditorFocus.Cell) {
+                    TableToolbar(
+                        onAddRow = viewModel::addRow,
+                        onAddColumn = viewModel::addColumn,
+                        onRemoveRow = viewModel::removeRow,
+                        onRemoveColumn = viewModel::removeColumn,
+                        onDeleteTable = viewModel::deleteTable,
+                    )
+                } else {
+                    FormattingToolbar(
+                        content = state.subContent(),
+                        selectionStart = state.field.selection.start,
+                        selectionEnd = state.field.selection.end,
+                        onLineStyle = viewModel::setLineStyle,
+                        onInline = viewModel::toggleInline,
+                        onInsertTable = viewModel::insertTable,
+                    )
+                }
             }
         }
     }
 }
 
+/** The note as a column of text fields and tables, in reading order. */
 @Composable
-private fun NoteBody(
-    state: EditorUiState,
-    onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
-    onToggleChecked: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaterialTheme.colorScheme
-    val textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = 0.sp, color = colors.onSurface)
-    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val display = remember(state.content, colors.onSurfaceVariant) {
-        buildNoteDisplay(state.content, colors.onSurfaceVariant)
-    }
-    val transformation = remember(display) { NoteVisualTransformation(state.content, display) }
-
+private fun NoteBody(state: EditorUiState, viewModel: EditorViewModel) {
+    val blocks = remember(state.content) { NoteTables.blocks(state.content) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val viewport = maxHeight
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
             NoteDate(state.modifiedAt)
-            Box(Modifier.fillMaxWidth()) {
-                BasicTextField(
-                    value = state.field,
-                    onValueChange = onValueChange,
-                    textStyle = textStyle,
-                    visualTransformation = transformation,
-                    cursorBrush = SolidColor(colors.primary),
-                    onTextLayout = { layout = it },
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .heightIn(min = viewport - 48.dp)
-                        .padding(bottom = 120.dp),
-                )
-                layout?.let { ListMarkers(state.content, display, it, textStyle, onToggleChecked) }
+            blocks.forEachIndexed { index, block ->
+                when (block) {
+                    is NoteBlock.Text -> key("text:" + block.key) {
+                        val isLast = index == blocks.lastIndex
+                        TextBlock(
+                            content = state.content,
+                            block = block,
+                            field = state.fields[block.key] ?: TextFieldValue(),
+                            focusRequested = state.focusRequest == EditorFocus.Text(block.key),
+                            onFocusRequestHandled = viewModel::consumeFocusRequest,
+                            onValueChange = { viewModel.onTextChange(block.key, it) },
+                            onToggleChecked = { line -> viewModel.toggleChecked(block.key, line) },
+                            onFocusChanged = { viewModel.onFocusChanged(EditorFocus.Text(block.key), it) },
+                            onBackspaceAtStart = { viewModel.onBackspaceAtStart(block.key) },
+                            // The last field fills the rest of the screen, so tapping anywhere below the note types into it.
+                            modifier = if (isLast) {
+                                Modifier.heightIn(min = if (blocks.size == 1) viewport - 168.dp else 160.dp)
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
+                    is NoteBlock.Table -> key("table:" + block.table.id) {
+                        NoteTableView(
+                            table = block.table,
+                            focusRequest = state.focusRequest as? EditorFocus.Cell,
+                            onFocusRequestHandled = viewModel::consumeFocusRequest,
+                            onCellChange = viewModel::onCellChange,
+                            onFocusChanged = viewModel::onFocusChanged,
+                        )
+                    }
+                }
             }
+            // Room to scroll the end of the note above the toolbar; tapping it continues the note.
+            val lastKey = (blocks.last() as NoteBlock.Text).key
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clickable(interactionSource = null, indication = null, onClickLabel = null) {
+                        viewModel.requestFocus(EditorFocus.Text(lastKey))
+                    },
+            )
         }
+    }
+}
+
+@Composable
+private fun TextBlock(
+    content: NoteContent,
+    block: NoteBlock.Text,
+    field: TextFieldValue,
+    focusRequested: Boolean,
+    onFocusRequestHandled: () -> Unit,
+    onValueChange: (TextFieldValue) -> Unit,
+    onToggleChecked: (Int) -> Unit,
+    onFocusChanged: (Boolean) -> Unit,
+    onBackspaceAtStart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = 0.sp, color = colors.onSurface)
+    val sub = remember(content, block) { NoteTables.subContent(content, block) }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val display = remember(sub, colors.onSurfaceVariant) { buildNoteDisplay(sub, colors.onSurfaceVariant) }
+    val transformation = remember(display) { NoteVisualTransformation(sub, display) }
+    val focusRequester = remember { FocusRequester() }
+    val currentField by rememberUpdatedState(field)
+
+    LaunchedEffect(focusRequested) {
+        if (focusRequested) {
+            focusRequester.requestFocus()
+            onFocusRequestHandled()
+        }
+    }
+
+    Box(Modifier.fillMaxWidth()) {
+        BasicTextField(
+            value = field,
+            onValueChange = onValueChange,
+            textStyle = textStyle,
+            visualTransformation = transformation,
+            cursorBrush = SolidColor(colors.primary),
+            onTextLayout = { layout = it },
+            modifier = modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { onFocusChanged(it.isFocused) }
+                .onPreviewKeyEvent { event ->
+                    val atStart = currentField.selection == TextRange.Zero
+                    if (block.key.isNotEmpty() && atStart && event.key == Key.Backspace && event.type == KeyEventType.KeyDown) {
+                        onBackspaceAtStart()
+                        true
+                    } else {
+                        false
+                    }
+                },
+        )
+        layout?.let { ListMarkers(sub, display, it, textStyle, onToggleChecked) }
     }
 }
 
@@ -334,6 +420,7 @@ private fun FormattingToolbar(
     selectionEnd: Int,
     onLineStyle: (LineStyle) -> Unit,
     onInline: (InlineStyle) -> Unit,
+    onInsertTable: () -> Unit,
 ) {
     var formatMode by rememberSaveable { mutableStateOf(false) }
     val lineStyle = NoteEditing.lineStyleAt(content, selectionStart)
@@ -361,6 +448,55 @@ private fun FormattingToolbar(
                     ToolbarToggle(Icons.Outlined.Checklist, R.string.format_checklist, lineStyle == LineStyle.Checklist) { onLineStyle(LineStyle.Checklist) }
                     ToolbarToggle(Icons.AutoMirrored.Outlined.FormatListBulleted, R.string.format_bullets, lineStyle == LineStyle.Bullet) { onLineStyle(LineStyle.Bullet) }
                     ToolbarToggle(Icons.Outlined.FormatListNumbered, R.string.format_numbers, lineStyle == LineStyle.Numbered) { onLineStyle(LineStyle.Numbered) }
+                    IconButton(onClick = onInsertTable) {
+                        Icon(Icons.Outlined.TableChart, contentDescription = stringResource(R.string.format_insert_table))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Shown instead of the formatting toolbar while a table cell has the keyboard. */
+@Composable
+private fun TableToolbar(
+    onAddRow: () -> Unit,
+    onAddColumn: () -> Unit,
+    onRemoveRow: () -> Unit,
+    onRemoveColumn: () -> Unit,
+    onDeleteTable: () -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
+    HorizontalFloatingToolbar(
+        expanded = true,
+        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onAddRow) {
+                Text(stringResource(R.string.table_add_row), style = MaterialTheme.typography.labelLarge)
+            }
+            TextButton(onClick = onAddColumn) {
+                Text(stringResource(R.string.table_add_column), style = MaterialTheme.typography.labelLarge)
+            }
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.table_options))
+                }
+                // Not focusable, so the cell keeps the keyboard (and this toolbar stays up) while the menu is open.
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, properties = PopupProperties(focusable = false)) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.table_delete_row)) },
+                        onClick = { menu = false; onRemoveRow() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.table_delete_column)) },
+                        onClick = { menu = false; onRemoveColumn() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.table_delete)) },
+                        leadingIcon = { Icon(Icons.Outlined.Delete, null) },
+                        onClick = { menu = false; onDeleteTable() },
+                    )
                 }
             }
         }

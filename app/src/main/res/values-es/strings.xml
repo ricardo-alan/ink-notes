@@ -68,4 +68,13 @@
     <string name="format_close">Cerrar formato</string>
     <string name="hide_keyboard">Listo</string>
     <string name="checklist_item">Elemento de la lista</string>
+    <string name="format_insert_table">Insertar tabla</string>
+    <string name="table">Tabla</string>
+    <string name="table_cell">Fila %1$d, columna %2$d</string>
+    <string name="table_add_row">Añadir fila</string>
+    <string name="table_add_column">Añadir columna</string>
+    <string name="table_options">Opciones de tabla</string>
+    <string name="table_delete_row">Eliminar fila</string>
+    <string name="table_delete_column">Eliminar columna</string>
+    <string name="table_delete">Eliminar tabla</string>
 </resources>
