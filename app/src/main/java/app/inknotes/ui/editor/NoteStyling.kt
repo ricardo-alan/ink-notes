@@ -97,7 +97,8 @@ fun buildNoteDisplay(content: NoteContent, mutedColor: Color): NoteDisplay {
                 else -> ParagraphStyle(textIndent = TextIndent(firstLine = ListIndent, restLine = ListIndent))
             }
             // The paragraph includes the character that stands in for its line break (or the trailing sentinel).
-            addStyle(paragraph, mapping.startOf(start), mapping.endOf(end) + 1)
+            // On an empty line the spacer sits before that character, so map [end] as a position, not a range end.
+            addStyle(paragraph, mapping.startOf(start), mapping.startOf(end) + 1)
         }
 
         spacers.forEachIndexed { k, (position, gap) ->
