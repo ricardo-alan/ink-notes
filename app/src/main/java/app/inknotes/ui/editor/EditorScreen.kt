@@ -202,11 +202,12 @@ private fun NoteBody(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val textStyle = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, color = colors.onSurface)
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = 0.sp, color = colors.onSurface)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val transformation = remember(state.content, colors.onSurfaceVariant) {
-        NoteVisualTransformation(state.content, colors.onSurfaceVariant)
+    val display = remember(state.content, colors.onSurfaceVariant) {
+        buildNoteDisplay(state.content, colors.onSurfaceVariant)
     }
+    val transformation = remember(display) { NoteVisualTransformation(state.content, display) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val viewport = maxHeight
@@ -225,7 +226,7 @@ private fun NoteBody(
                         .heightIn(min = viewport - 48.dp)
                         .padding(bottom = 120.dp),
                 )
-                layout?.let { ListMarkers(state.content, it, textStyle, onToggleChecked) }
+                layout?.let { ListMarkers(state.content, display, it, textStyle, onToggleChecked) }
             }
         }
     }
@@ -254,11 +255,12 @@ private fun NoteDate(modifiedAt: Long?) {
 @Composable
 private fun ListMarkers(
     content: NoteContent,
+    display: NoteDisplay,
     layout: TextLayoutResult,
     textStyle: TextStyle,
     onToggleChecked: (Int) -> Unit,
 ) {
-    if (layout.layoutInput.text.text != displayText(content)) return
+    if (layout.layoutInput.text != display.text) return
     val density = LocalDensity.current
     val colors = MaterialTheme.colorScheme
     val indent = with(density) { ListIndent.toDp() }
@@ -268,7 +270,7 @@ private fun ListMarkers(
     content.lines.forEachIndexed { index, format ->
         number = if (format.style == LineStyle.Numbered) number + 1 else 0
         if (!format.style.isList) return@forEachIndexed
-        val offset = NoteEditing.lineStart(content.text, index).coerceAtMost(content.text.length)
+        val offset = display.mapping.originalToTransformed(NoteEditing.lineStart(content.text, index).coerceAtMost(content.text.length))
         val visualLine = layout.getLineForOffset(offset)
         val top = layout.getLineTop(visualLine)
         val height = with(density) { (layout.getLineBottom(visualLine) - top).toDp() }

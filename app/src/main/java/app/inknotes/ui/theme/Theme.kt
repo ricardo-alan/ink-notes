@@ -64,6 +64,7 @@ fun InkTheme(
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
+        typography = InkTypography,
         content = content,
     )
 }
