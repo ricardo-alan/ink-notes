@@ -8,6 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.inknotes.settings.Appearance
+import app.inknotes.settings.AppearanceSettings
+import app.inknotes.settings.ThemeMode
 import app.inknotes.sync.DriveClient
 import app.inknotes.sync.DriveSync
 import app.inknotes.sync.SyncStatus
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val sync: SyncStatus = SyncStatus(),
     val syncing: Boolean = false,
+    val appearance: Appearance = Appearance(),
     /** Waiting for Google to grant Drive access. */
     val connecting: Boolean = false,
 )
@@ -37,15 +41,31 @@ sealed interface SettingsEvent {
     data object ConnectFailed : SettingsEvent
 }
 
-class SettingsViewModel(private val sync: DriveSync) : ViewModel() {
+class SettingsViewModel(
+    private val sync: DriveSync,
+    private val appearanceSettings: AppearanceSettings,
+) : ViewModel() {
 
     private val connecting = MutableStateFlow(false)
     private val _events = Channel<SettingsEvent>(Channel.BUFFERED)
     val events: Flow<SettingsEvent> = _events.receiveAsFlow()
 
-    val state: StateFlow<SettingsUiState> = combine(sync.settings.status, sync.isSyncing, connecting) { status, syncing, connecting ->
-        SettingsUiState(status, syncing, connecting)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(sync.settings.current))
+    val state: StateFlow<SettingsUiState> = combine(
+        sync.settings.status,
+        sync.isSyncing,
+        appearanceSettings.state,
+        connecting,
+    ) { status, syncing, appearance, connecting ->
+        SettingsUiState(status, syncing, appearance, connecting)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SettingsUiState(sync.settings.current, appearance = appearanceSettings.state.value),
+    )
+
+    fun setThemeMode(mode: ThemeMode) = appearanceSettings.setThemeMode(mode)
+
+    fun setPureBlack(enabled: Boolean) = appearanceSettings.setPureBlack(enabled)
 
     fun turnOn() = connect(account = null)
 
@@ -92,6 +112,6 @@ class SettingsViewModel(private val sync: DriveSync) : ViewModel() {
     }
 
     companion object {
-        val Factory = viewModelFactory { initializer { SettingsViewModel(inkApp.sync) } }
+        val Factory = viewModelFactory { initializer { SettingsViewModel(inkApp.sync, inkApp.appearance) } }
     }
 }

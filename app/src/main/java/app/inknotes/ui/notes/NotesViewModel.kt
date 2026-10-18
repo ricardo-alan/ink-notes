@@ -11,6 +11,8 @@ import app.inknotes.data.FolderWithCount
 import app.inknotes.data.NoteScope
 import app.inknotes.data.NoteSummary
 import app.inknotes.data.NotesRepository
+import app.inknotes.settings.AppearanceSettings
+import app.inknotes.settings.NoteLayout
 import app.inknotes.ui.NotesRoute
 import app.inknotes.ui.common.inkApp
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +36,13 @@ data class NotesUiState(
 class NotesViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: NotesRepository,
+    private val appearance: AppearanceSettings,
 ) : ViewModel() {
+
+    val layout: StateFlow<NoteLayout> = appearance.state.map { it.noteLayout }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, appearance.state.value.noteLayout)
+
+    fun setLayout(layout: NoteLayout) = appearance.setNoteLayout(layout)
 
     private val route = savedStateHandle.toRoute<NotesRoute>()
 
@@ -63,7 +71,7 @@ class NotesViewModel(
 
     companion object {
         val Factory = viewModelFactory {
-            initializer { NotesViewModel(createSavedStateHandle(), inkApp.repository) }
+            initializer { NotesViewModel(createSavedStateHandle(), inkApp.repository, inkApp.appearance) }
         }
     }
 }

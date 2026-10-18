@@ -2,6 +2,7 @@ package app.inknotes.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
@@ -52,15 +53,17 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun InkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    pureBlack: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = when {
+    val baseScheme = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         darkTheme -> DarkColors
         else -> LightColors
     }
+    val colorScheme = if (darkTheme && pureBlack) baseScheme.toPureBlack() else baseScheme
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
@@ -68,3 +71,15 @@ fun InkTheme(
         content = content,
     )
 }
+
+/** Black background; containers stay a few steps above black so grouped sections remain visible. */
+private fun ColorScheme.toPureBlack() = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0F0F10),
+    surfaceContainer = Color(0xFF151517),
+    surfaceContainerHigh = Color(0xFF1C1C1F),
+    surfaceContainerHighest = Color(0xFF242428),
+)

@@ -94,4 +94,15 @@
     <string name="sync_error_other">Sync didn’t finish. Ink will try again later.</string>
     <string name="sync_connect_failed">Couldn’t connect to Google Drive</string>
     <string name="sync_privacy_info">Notes are saved in a hidden app folder in your Google Drive that only Ink can open. They count toward your Drive storage. Turning sync off keeps your notes on this device.</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="pure_black">Pure black</string>
+    <string name="pure_black_summary">Black background in dark mode. Saves battery on OLED screens.</string>
+    <string name="layout_grid">Gallery view</string>
+    <string name="layout_list">List view</string>
 </resources>

@@ -7,7 +7,7 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 private const val LIVE = "isDeleted = 0 AND trashedAt IS NULL"
-private const val SUMMARY = "id, folderId, title, preview, isPinned, modifiedAt, trashedAt"
+private const val SUMMARY = "id, folderId, title, preview, content, isPinned, modifiedAt, trashedAt"
 private const val SEARCH = "(:query = '' OR searchText LIKE '%' || :query || '%' ESCAPE '\\')"
 
 @Dao

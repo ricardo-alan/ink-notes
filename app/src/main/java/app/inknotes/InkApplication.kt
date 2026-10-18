@@ -6,6 +6,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import app.inknotes.data.InkDatabase
 import app.inknotes.data.NotesRepository
+import app.inknotes.settings.AppearanceSettings
 import app.inknotes.sync.DriveSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,8 @@ class InkApplication : Application() {
     val repository: NotesRepository by lazy { NotesRepository(database.notesDao()) }
 
     val sync: DriveSync by lazy { DriveSync(this, database.notesDao()) }
+
+    val appearance: AppearanceSettings by lazy { AppearanceSettings(this) }
 
     override fun onCreate() {
         super.onCreate()

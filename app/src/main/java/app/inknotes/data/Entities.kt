@@ -51,6 +51,8 @@ data class NoteSummary(
     val folderId: String?,
     val title: String,
     val preview: String,
+    /** Serialized note, for the gallery view's multi-line preview. */
+    val content: String,
     val isPinned: Boolean,
     val modifiedAt: Long,
     val trashedAt: Long?,

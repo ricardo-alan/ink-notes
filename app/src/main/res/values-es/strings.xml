@@ -94,4 +94,15 @@
     <string name="sync_error_other">La sincronización no terminó. Ink lo volverá a intentar más tarde.</string>
     <string name="sync_connect_failed">No se pudo conectar con Google Drive</string>
     <string name="sync_privacy_info">Las notas se guardan en una carpeta oculta de tu Google Drive que solo Ink puede abrir. Ocupan espacio de tu almacenamiento de Drive. Si desactivas la sincronización, tus notas se quedan en este dispositivo.</string>
+
+    <!-- Apariencia -->
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="pure_black">Negro puro</string>
+    <string name="pure_black_summary">Fondo negro en modo oscuro. Ahorra batería en pantallas OLED.</string>
+    <string name="layout_grid">Vista de galería</string>
+    <string name="layout_list">Vista de lista</string>
 </resources>

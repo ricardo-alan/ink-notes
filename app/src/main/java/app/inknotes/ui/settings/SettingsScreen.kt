@@ -15,6 +15,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -24,6 +26,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -47,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.inknotes.R
+import app.inknotes.settings.Appearance
+import app.inknotes.settings.ThemeMode
 import app.inknotes.sync.SyncError
 import app.inknotes.ui.common.GroupedSection
 import app.inknotes.ui.common.RowDivider
@@ -91,6 +98,13 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         LazyColumn(contentPadding = padding) {
+            item {
+                AppearanceSection(
+                    appearance = state.appearance,
+                    onThemeMode = viewModel::setThemeMode,
+                    onPureBlack = viewModel::setPureBlack,
+                )
+            }
             item {
                 GroupedSection(header = stringResource(R.string.settings_section_sync)) {
                     val enabled = state.sync.enabled
@@ -174,5 +188,49 @@ private fun SyncStatusRow(state: SettingsUiState, onSyncNow: () -> Unit, onSignI
         } else {
             TextButton(onClick = onSyncNow, enabled = !state.syncing) { Text(stringResource(R.string.sync_now)) }
         }
+    }
+}
+
+@Composable
+private fun AppearanceSection(
+    appearance: Appearance,
+    onThemeMode: (ThemeMode) -> Unit,
+    onPureBlack: (Boolean) -> Unit,
+) {
+    val options = listOf(
+        ThemeMode.SYSTEM to R.string.theme_system,
+        ThemeMode.LIGHT to R.string.theme_light,
+        ThemeMode.DARK to R.string.theme_dark,
+    )
+    GroupedSection(header = stringResource(R.string.settings_section_appearance)) {
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.theme)) },
+            leadingContent = { Icon(Icons.Outlined.Palette, contentDescription = null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        ) {
+            options.forEachIndexed { index, (mode, label) ->
+                SegmentedButton(
+                    selected = appearance.themeMode == mode,
+                    onClick = { onThemeMode(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                ) { Text(stringResource(label)) }
+            }
+        }
+        RowDivider()
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.pure_black)) },
+            supportingContent = { Text(stringResource(R.string.pure_black_summary)) },
+            leadingContent = { Icon(Icons.Outlined.Contrast, contentDescription = null) },
+            trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier = Modifier.toggleable(
+                value = appearance.pureBlack,
+                role = Role.Switch,
+                onValueChange = onPureBlack,
+            ),
+        )
     }
 }

@@ -2,6 +2,34 @@ package app.inknotes.ui.notes
 
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import app.inknotes.model.LineFormat
+import app.inknotes.model.LineStyle
+import app.inknotes.model.NoteContent
+import app.inknotes.settings.NoteLayout
+import kotlinx.serialization.json.Json
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -47,6 +75,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +111,7 @@ fun NotesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val layout by viewModel.layout.collectAsStateWithLifecycle()
     val scope = viewModel.scope
     val isTrash = scope == NoteScope.Trash
     val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: Locale.getDefault()
@@ -128,6 +158,15 @@ fun NotesScreen(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
+                actions = {
+                    val grid = layout == NoteLayout.GRID
+                    IconButton(onClick = { viewModel.setLayout(if (grid) NoteLayout.LIST else NoteLayout.GRID) }) {
+                        Icon(
+                            if (grid) Icons.Outlined.ViewAgenda else Icons.Outlined.GridView,
+                            contentDescription = stringResource(if (grid) R.string.layout_list else R.string.layout_grid),
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -139,55 +178,62 @@ fun NotesScreen(
             }
         },
     ) { padding ->
-        LazyColumn(contentPadding = padding) {
-            item { SearchField(query, onQueryChange = { viewModel.query.value = it }) }
-
-            if (isTrash) {
-                item {
-                    Text(
-                        stringResource(R.string.trash_info, NotesRepository.TRASH_RETENTION_DAYS.toInt()),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            if (state.loaded && state.notes.isEmpty()) {
-                item {
-                    val message = when {
-                        query.isNotBlank() -> R.string.no_results
-                        isTrash -> R.string.trash_empty
-                        else -> R.string.no_notes
-                    }
-                    Text(
-                        stringResource(message),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
-            }
-
+        val pinnedHeader = stringResource(R.string.section_pinned)
+        val sections = buildList {
             val pinned = state.notes.filter { it.isPinned && !isTrash }
-            if (pinned.isNotEmpty()) {
-                item(key = "pinned") {
-                    NoteSection(stringResource(R.string.section_pinned), pinned, isTrash, locale, onOpenNote, actions)
-                }
-            }
-            val rest = state.notes.filter { !it.isPinned || isTrash }
-            rest.groupBy { DateGrouping.sectionFor(if (isTrash) it.trashedAt ?: it.modifiedAt else it.modifiedAt) }
+            if (pinned.isNotEmpty()) add(NoteGroup("pinned", pinnedHeader, pinned))
+            state.notes.filter { !it.isPinned || isTrash }
+                .groupBy { DateGrouping.sectionFor(if (isTrash) it.trashedAt ?: it.modifiedAt else it.modifiedAt) }
                 .forEach { (section, notes) ->
-                    item(key = section.toString()) {
-                        val header = when (section) {
-                            is DateSection.Relative -> stringResource(section.label)
-                            is DateSection.Month -> DateGrouping.monthLabel(section, locale)
-                        }
-                        NoteSection(header, notes, isTrash, locale, onOpenNote, actions)
+                    val header = when (section) {
+                        is DateSection.Relative -> stringResource(section.label)
+                        is DateSection.Month -> DateGrouping.monthLabel(section, locale)
+                    }
+                    add(NoteGroup(section.toString(), header, notes))
+                }
+        }
+        val emptyMessage = when {
+            !state.loaded || state.notes.isNotEmpty() -> null
+            query.isNotBlank() -> R.string.no_results
+            isTrash -> R.string.trash_empty
+            else -> R.string.no_notes
+        }
+        val onQueryChange: (String) -> Unit = { viewModel.query.value = it }
+
+        if (layout == NoteLayout.GRID) {
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Adaptive(160.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + 120.dp,
+                ),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    ListHeader(query, onQueryChange, isTrash, emptyMessage, horizontalPadding = 0.dp)
+                }
+                sections.forEach { group ->
+                    item(key = "header-${group.key}", span = StaggeredGridItemSpan.FullLine) {
+                        SectionHeader(group.header, Modifier.padding(start = 16.dp, top = 8.dp))
+                    }
+                    items(group.notes, key = { it.id }) { note ->
+                        NoteCard(note, isTrash, locale, onOpenNote, actions)
                     }
                 }
-            item { Spacer(Modifier.height(120.dp)) }
+            }
+        } else {
+            LazyColumn(contentPadding = padding) {
+                item { ListHeader(query, onQueryChange, isTrash, emptyMessage, horizontalPadding = 16.dp) }
+                sections.forEach { group ->
+                    item(key = group.key) {
+                        NoteSection(group.header, group.notes, isTrash, locale, onOpenNote, actions)
+                    }
+                }
+                item { Spacer(Modifier.height(120.dp)) }
+            }
         }
     }
 
@@ -214,6 +260,50 @@ fun NotesScreen(
     }
 }
 
+
+private class NoteGroup(val key: String, val header: String, val notes: List<NoteSummary>)
+
+/** Search, the Recently Deleted explanation and the empty state: shared by list and gallery. */
+@Composable
+private fun ListHeader(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    isTrash: Boolean,
+    emptyMessage: Int?,
+    horizontalPadding: Dp,
+) {
+    Column {
+        SearchField(query, onQueryChange, horizontalPadding)
+        if (isTrash) {
+            Text(
+                stringResource(R.string.trash_info, NotesRepository.TRASH_RETENTION_DAYS.toInt()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = horizontalPadding + 16.dp, vertical = 4.dp),
+            )
+        }
+        if (emptyMessage != null) {
+            Text(
+                stringResource(emptyMessage),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.semantics { heading() },
+    )
+}
+
 private class NoteActions(
     val onPin: (NoteSummary) -> Unit,
     val onMove: (NoteSummary) -> Unit,
@@ -223,11 +313,11 @@ private class NoteActions(
 )
 
 @Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+private fun SearchField(query: String, onQueryChange: (String) -> Unit, horizontalPadding: Dp) {
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
             Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -268,12 +358,12 @@ private fun NoteSection(
     GroupedSection(header = header) {
         notes.forEachIndexed { index, note ->
             if (index > 0) RowDivider()
-            NoteRow(note, isTrash, locale, onOpenNote, actions)
+            // Keyed so per-row state (swipe offset, menu) follows the note when rows move between sections.
+            key(note.id) { NoteRow(note, isTrash, locale, onOpenNote, actions) }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NoteRow(
     note: NoteSummary,
@@ -284,67 +374,228 @@ private fun NoteRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     Box {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = { if (isTrash) menu = true else onOpenNote(note.id) },
-                    onLongClick = { menu = true },
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
+        if (isTrash) {
+            NoteRowContent(note, locale, onClick = { menu = true }, onLongClick = { menu = true })
+        } else {
+            SwipeableNote(note, actions) {
+                NoteRowContent(note, locale, onClick = { onOpenNote(note.id) }, onLongClick = { menu = true })
+            }
+        }
+        NoteMenu(note, isTrash, expanded = menu, onDismiss = { menu = false }, actions = actions)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NoteRowContent(note: NoteSummary, locale: Locale, onClick: () -> Unit, onLongClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            note.title.ifEmpty { stringResource(R.string.untitled) },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row {
             Text(
-                note.title.ifEmpty { stringResource(R.string.untitled) },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                DateGrouping.rowDate(note.modifiedAt, locale),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                note.preview.ifEmpty { stringResource(R.string.no_additional_text) },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row {
+        }
+    }
+}
+
+/**
+ * Apple Notes gestures: swipe left to delete, swipe right to pin or unpin.
+ * TalkBack users get the same actions as custom accessibility actions.
+ */
+@Composable
+private fun SwipeableNote(note: NoteSummary, actions: NoteActions, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    val pinLabel = stringResource(if (note.isPinned) R.string.action_unpin else R.string.action_pin)
+    val deleteLabel = stringResource(R.string.action_delete)
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = { SwipeBackground(state.dismissDirection, note.isPinned) },
+        onDismiss = { direction ->
+            when (direction) {
+                SwipeToDismissBoxValue.EndToStart -> actions.onDelete(note)
+                SwipeToDismissBoxValue.StartToEnd -> actions.onPin(note)
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
+            scope.launch { state.reset() }
+        },
+        modifier = Modifier.semantics {
+            customActions = listOf(
+                CustomAccessibilityAction(pinLabel) { actions.onPin(note); true },
+                CustomAccessibilityAction(deleteLabel) { actions.onDelete(note); true },
+            )
+        },
+    ) { content() }
+}
+
+@Composable
+private fun SwipeBackground(direction: SwipeToDismissBoxValue, isPinned: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    val (color, contentColor, icon, alignment) = when (direction) {
+        SwipeToDismissBoxValue.EndToStart -> SwipeStyle(colors.errorContainer, colors.onErrorContainer, Icons.Outlined.Delete, Alignment.CenterEnd)
+        SwipeToDismissBoxValue.StartToEnd -> SwipeStyle(
+            colors.tertiaryContainer,
+            colors.onTertiaryContainer,
+            if (isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin,
+            Alignment.CenterStart,
+        )
+        SwipeToDismissBoxValue.Settled -> return
+    }
+    Box(
+        contentAlignment = alignment,
+        modifier = Modifier.fillMaxSize().background(color).padding(horizontal = 24.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = contentColor)
+    }
+}
+
+private data class SwipeStyle(val color: Color, val contentColor: Color, val icon: ImageVector, val alignment: Alignment)
+
+/** Gallery card: title, the first lines of the note and its date. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NoteCard(
+    note: NoteSummary,
+    isTrash: Boolean,
+    locale: Locale,
+    onOpenNote: (String) -> Unit,
+    actions: NoteActions,
+) {
+    var menu by remember { mutableStateOf(false) }
+    val lines = remember(note.content) { previewLines(note.content) }
+    Box {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
+                .combinedClickable(
+                    onClick = { if (isTrash) menu = true else onOpenNote(note.id) },
+                    onLongClick = { menu = true },
+                ),
+        ) {
+            Column(Modifier.padding(14.dp)) {
                 Text(
-                    DateGrouping.rowDate(note.modifiedAt, locale),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    note.preview.ifEmpty { stringResource(R.string.no_additional_text) },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    note.title.ifEmpty { stringResource(R.string.untitled) },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (lines.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        lines.joinToString("\n"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = PREVIEW_LINES,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (note.isPinned && !isTrash) {
+                        Icon(
+                            Icons.Filled.PushPin,
+                            contentDescription = stringResource(R.string.section_pinned),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        DateGrouping.rowDate(note.modifiedAt, locale),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            if (isTrash) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_restore)) },
-                    leadingIcon = { Icon(Icons.Outlined.RestoreFromTrash, null) },
-                    onClick = { menu = false; actions.onRestore(note) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete_forever)) },
-                    leadingIcon = { Icon(Icons.Outlined.DeleteForever, null) },
-                    onClick = { menu = false; actions.onDeleteForever(note) },
-                )
-            } else {
-                DropdownMenuItem(
-                    text = { Text(stringResource(if (note.isPinned) R.string.action_unpin else R.string.action_pin)) },
-                    leadingIcon = { Icon(Icons.Outlined.PushPin, null) },
-                    onClick = { menu = false; actions.onPin(note) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_move)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
-                    onClick = { menu = false; actions.onMove(note) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    leadingIcon = { Icon(Icons.Outlined.Delete, null) },
-                    onClick = { menu = false; actions.onDelete(note) },
-                )
-            }
+        NoteMenu(note, isTrash, expanded = menu, onDismiss = { menu = false }, actions = actions)
+    }
+}
+
+private const val PREVIEW_LINES = 8
+private val previewJson = Json { ignoreUnknownKeys = true }
+
+/** The note's lines after the title, with list markers, for the gallery card. */
+private fun previewLines(json: String): List<String> {
+    val content = runCatching { previewJson.decodeFromString<NoteContent>(json) }.getOrNull() ?: return emptyList()
+    val lines = content.text.lines()
+    val titleIndex = lines.indexOfFirst { it.isNotBlank() }
+    var number = 0
+    return lines.withIndex().drop(titleIndex + 1).mapNotNull { (index, line) ->
+        val format = content.lines.getOrElse(index) { LineFormat() }
+        number = if (format.style == LineStyle.Numbered) number + 1 else 0
+        if (line.isBlank()) return@mapNotNull null
+        when (format.style) {
+            LineStyle.Checklist -> (if (format.checked) "☑ " else "☐ ") + line
+            LineStyle.Bullet -> "• $line"
+            LineStyle.Numbered -> "$number. $line"
+            else -> line
+        }
+    }.take(PREVIEW_LINES)
+}
+
+@Composable
+private fun NoteMenu(
+    note: NoteSummary,
+    isTrash: Boolean,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    actions: NoteActions,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        if (isTrash) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_restore)) },
+                leadingIcon = { Icon(Icons.Outlined.RestoreFromTrash, null) },
+                onClick = { onDismiss(); actions.onRestore(note) },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_delete_forever)) },
+                leadingIcon = { Icon(Icons.Outlined.DeleteForever, null) },
+                onClick = { onDismiss(); actions.onDeleteForever(note) },
+            )
+        } else {
+            DropdownMenuItem(
+                text = { Text(stringResource(if (note.isPinned) R.string.action_unpin else R.string.action_pin)) },
+                leadingIcon = { Icon(Icons.Outlined.PushPin, null) },
+                onClick = { onDismiss(); actions.onPin(note) },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_move)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
+                onClick = { onDismiss(); actions.onMove(note) },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_delete)) },
+                leadingIcon = { Icon(Icons.Outlined.Delete, null) },
+                onClick = { onDismiss(); actions.onDelete(note) },
+            )
         }
     }
 }
