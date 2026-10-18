@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -183,7 +184,7 @@ fun EditorScreen(
                 visible = focused,
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
             ) {
                 if (state.focus is EditorFocus.Cell) {
                     TableToolbar(
@@ -433,13 +434,21 @@ private fun FormattingToolbar(
         AnimatedContent(targetState = formatMode, label = "toolbar") { formatting ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (formatting) {
-                    StyleButton(R.string.format_title, lineStyle == LineStyle.Title) { onLineStyle(LineStyle.Title) }
-                    StyleButton(R.string.format_heading, lineStyle == LineStyle.Heading) { onLineStyle(LineStyle.Heading) }
-                    StyleButton(R.string.format_body, lineStyle == LineStyle.Body) { onLineStyle(LineStyle.Body) }
-                    ToolbarToggle(Icons.Outlined.FormatBold, R.string.format_bold, inlineActive(InlineStyle.Bold)) { onInline(InlineStyle.Bold) }
-                    ToolbarToggle(Icons.Outlined.FormatItalic, R.string.format_italic, inlineActive(InlineStyle.Italic)) { onInline(InlineStyle.Italic) }
-                    ToolbarToggle(Icons.Outlined.FormatUnderlined, R.string.format_underline, inlineActive(InlineStyle.Underline)) { onInline(InlineStyle.Underline) }
-                    ToolbarToggle(Icons.Outlined.FormatStrikethrough, R.string.format_strikethrough, inlineActive(InlineStyle.Strikethrough)) { onInline(InlineStyle.Strikethrough) }
+                    // The styles scroll sideways when they don't fit; closing stays visible at the end.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
+                        StyleButton(R.string.format_title, lineStyle == LineStyle.Title) { onLineStyle(LineStyle.Title) }
+                        StyleButton(R.string.format_heading, lineStyle == LineStyle.Heading) { onLineStyle(LineStyle.Heading) }
+                        StyleButton(R.string.format_body, lineStyle == LineStyle.Body) { onLineStyle(LineStyle.Body) }
+                        ToolbarToggle(Icons.Outlined.FormatBold, R.string.format_bold, inlineActive(InlineStyle.Bold)) { onInline(InlineStyle.Bold) }
+                        ToolbarToggle(Icons.Outlined.FormatItalic, R.string.format_italic, inlineActive(InlineStyle.Italic)) { onInline(InlineStyle.Italic) }
+                        ToolbarToggle(Icons.Outlined.FormatUnderlined, R.string.format_underline, inlineActive(InlineStyle.Underline)) { onInline(InlineStyle.Underline) }
+                        ToolbarToggle(Icons.Outlined.FormatStrikethrough, R.string.format_strikethrough, inlineActive(InlineStyle.Strikethrough)) { onInline(InlineStyle.Strikethrough) }
+                    }
                     IconButton(onClick = { formatMode = false }) {
                         Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.format_close))
                     }
