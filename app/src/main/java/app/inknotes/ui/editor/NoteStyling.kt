@@ -18,6 +18,8 @@ import app.inknotes.model.InlineStyle
 import app.inknotes.model.LineFormat
 import app.inknotes.model.LineStyle
 import app.inknotes.model.NoteContent
+import app.inknotes.model.NoteLink
+import app.inknotes.model.NoteLinks
 
 /** Width reserved on the left of list lines for bullets, numbers and checkboxes. */
 val ListIndent: TextUnit = 30.sp
@@ -34,7 +36,7 @@ private const val ZERO_WIDTH = '\u200B'
  * - Between blocks, a one-character spacer paragraph adds vertical space (see [gapBetween]).
  *   Compose has no paragraph spacing, and line height applies to every wrapped line.
  */
-class NoteDisplay(val text: AnnotatedString, val mapping: OffsetMapping)
+class NoteDisplay(val text: AnnotatedString, val mapping: OffsetMapping, val links: List<NoteLink> = emptyList())
 
 /**
  * Space between two consecutive lines, depending on what kind of block each one is.
@@ -52,7 +54,7 @@ private fun gapBetween(previous: LineFormat, next: LineFormat): TextUnit = when 
 
 private val SpacerFontSize = 1.sp
 
-fun buildNoteDisplay(content: NoteContent, mutedColor: Color): NoteDisplay {
+fun buildNoteDisplay(content: NoteContent, mutedColor: Color, linkColor: Color = Color.Unspecified): NoteDisplay {
     val text = content.text
     val lineStarts = buildList {
         add(0)
@@ -73,6 +75,8 @@ fun buildNoteDisplay(content: NoteContent, mutedColor: Color): NoteDisplay {
         while (spacer < spacers.size) { append(ZERO_WIDTH); spacer++ }
         append(ZERO_WIDTH)
     }
+
+    val links = NoteLinks.find(text)
 
     val annotated = AnnotatedString.Builder(display).apply {
         fun style(style: SpanStyle, start: Int, end: Int) {
@@ -125,12 +129,13 @@ fun buildNoteDisplay(content: NoteContent, mutedColor: Color): NoteDisplay {
                 else -> Unit
             }
         }
+        for (link in links) style(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline), link.start, link.end)
         decorations(content, text.length).forEach { (range, decoration) ->
             style(SpanStyle(textDecoration = decoration), range.first, range.last)
         }
     }.toAnnotatedString()
 
-    return NoteDisplay(annotated, mapping)
+    return NoteDisplay(annotated, mapping, links)
 }
 
 /**

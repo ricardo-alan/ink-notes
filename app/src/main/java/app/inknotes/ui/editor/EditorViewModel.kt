@@ -1,5 +1,6 @@
 package app.inknotes.ui.editor
 
+import android.os.SystemClock
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.SavedStateHandle
@@ -49,6 +50,8 @@ data class EditorUiState(
     val createdAt: Long? = null,
     val modifiedAt: Long? = null,
     val closed: Boolean = false,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
 ) {
     /** The text block formatting applies to: the focused one, else the first. */
     val textKey: String get() = (focus as? EditorFocus.Text)?.key ?: ""
@@ -123,7 +126,12 @@ class EditorViewModel(
         } else {
             TextFieldValue(result.content.text, TextRange(result.selectionStart, result.selectionEnd))
         }
-        updateContent(NoteTables.replaceText(current.content, block, result.content), current.fields + (key to field))
+        updateContent(
+            NoteTables.replaceText(current.content, block, result.content),
+            current.fields + (key to field),
+            // A new line break starts its own undo step, like a word boundary.
+            typing = value.text.count { it == '\n' } <= sub.text.count { it == '\n' },
+        )
     }
 
     fun setLineStyle(style: LineStyle) = editFocusedText { sub, field ->
@@ -174,7 +182,7 @@ class EditorViewModel(
     fun onCellChange(tableId: String, row: Int, column: Int, text: String) {
         val s = _state.value
         if ('\n' !in text) {
-            updateContent(NoteTables.setCell(s.content, tableId, row, column, text), s.fields)
+            updateContent(NoteTables.setCell(s.content, tableId, row, column, text), s.fields, typing = true)
             return
         }
         var content = NoteTables.setCell(s.content, tableId, row, column, text.replace("\n", ""))
@@ -253,14 +261,70 @@ class EditorViewModel(
         app.appScope.launch { flush() }
     }
 
-    private fun updateContent(content: NoteContent, fields: Map<String, TextFieldValue>, focusRequest: EditorFocus? = null) {
+    private fun updateContent(
+        content: NoteContent,
+        fields: Map<String, TextFieldValue>,
+        focusRequest: EditorFocus? = null,
+        typing: Boolean = false,
+    ) {
+        recordUndo(typing)
         _state.update {
             it.copy(
                 content = content,
                 fields = syncFields(content, fields),
                 focusRequest = focusRequest ?: it.focusRequest,
+                canUndo = undoStack.isNotEmpty(),
+                canRedo = false,
             )
         }
+        scheduleSave()
+    }
+
+    // Undo / redo
+
+    private data class Snapshot(val content: NoteContent, val fields: Map<String, TextFieldValue>, val focus: EditorFocus?)
+
+    private val undoStack = ArrayDeque<Snapshot>()
+    private val redoStack = ArrayDeque<Snapshot>()
+    private var lastTypingAt = 0L
+
+    private fun snapshot() = _state.value.let { Snapshot(it.content, it.fields, it.focus) }
+
+    /**
+     * Saves the state before an edit. A burst of typing becomes one step (like a word), so undo
+     * doesn't remove one letter at a time; formatting, Enter and table edits are always their own step.
+     */
+    private fun recordUndo(typing: Boolean) {
+        val now = SystemClock.uptimeMillis()
+        val continuesTyping = typing && now - lastTypingAt < TYPING_GROUP_MS && undoStack.isNotEmpty()
+        lastTypingAt = if (typing) now else 0L
+        redoStack.clear()
+        if (continuesTyping) return
+        undoStack.addLast(snapshot())
+        if (undoStack.size > MAX_UNDO) undoStack.removeFirst()
+    }
+
+    fun undo() = step(from = undoStack, to = redoStack)
+
+    fun redo() = step(from = redoStack, to = undoStack)
+
+    private fun step(from: ArrayDeque<Snapshot>, to: ArrayDeque<Snapshot>) {
+        val target = from.removeLastOrNull() ?: return
+        to.addLast(snapshot())
+        lastTypingAt = 0L
+        _state.update {
+            it.copy(
+                content = target.content,
+                fields = syncFields(target.content, target.fields),
+                focusRequest = target.focus,
+                canUndo = undoStack.isNotEmpty(),
+                canRedo = redoStack.isNotEmpty(),
+            )
+        }
+        scheduleSave()
+    }
+
+    private fun scheduleSave() {
         dirty = true
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
@@ -304,6 +368,8 @@ class EditorViewModel(
             }
 
         private const val KEY_NEW_ID = "newNoteId"
+        private const val TYPING_GROUP_MS = 1_000L
+        private const val MAX_UNDO = 100
         private const val SAVE_DEBOUNCE_MS = 500L
 
         val Factory = viewModelFactory {

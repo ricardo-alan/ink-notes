@@ -13,6 +13,7 @@ import app.inknotes.widget.InkWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,21 @@ class InkApplication : Application() {
     val sync: DriveSync by lazy { DriveSync(this, database.notesDao()) }
 
     val appearance: AppearanceSettings by lazy { AppearanceSettings(this) }
+
+    /**
+     * Where to navigate next, from a shortcut, tile, widget or share. Lives here rather than in
+     * the activity so it survives the activity being recreated while it is pending.
+     */
+    val pendingRequest = MutableStateFlow<InkIntents.Request?>(null)
+
+    /** Turns an incoming request into navigation; shared text is saved first, outside any screen. */
+    fun submit(request: InkIntents.Request) {
+        if (request is InkIntents.Request.SharedText) {
+            appScope.launch { pendingRequest.value = InkIntents.Request.OpenNote(repository.createFromText(request.text)) }
+        } else {
+            pendingRequest.value = request
+        }
+    }
 
     @OptIn(FlowPreview::class)
     override fun onCreate() {

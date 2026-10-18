@@ -46,6 +46,7 @@
     <string name="delete_forever_confirm_title">Delete this note?</string>
     <string name="delete_forever_confirm_body">This can’t be undone.</string>
     <string name="note_deleted">Note moved to Recently Deleted</string>
+    <string name="redo">Redo</string>
     <string name="undo">Undo</string>
     <string name="more_options">More options</string>
     <string name="back">Back</string>

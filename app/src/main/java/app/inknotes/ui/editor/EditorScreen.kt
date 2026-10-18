@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -81,6 +83,12 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -144,6 +152,12 @@ fun EditorScreen(
                 },
                 actions = {
                     if (focused) {
+                        IconButton(onClick = viewModel::undo, enabled = state.canUndo) {
+                            Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = stringResource(R.string.undo))
+                        }
+                        IconButton(onClick = viewModel::redo, enabled = state.canRedo) {
+                            Icon(Icons.AutoMirrored.Outlined.Redo, contentDescription = stringResource(R.string.redo))
+                        }
                         TextButton(onClick = { keyboard?.hide(); focusManager.clearFocus() }) {
                             Text(stringResource(R.string.hide_keyboard))
                         }
@@ -281,7 +295,11 @@ private fun TextBlock(
     val textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = 0.sp, color = colors.onSurface)
     val sub = remember(content, block) { NoteTables.subContent(content, block) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val display = remember(sub, colors.onSurfaceVariant) { buildNoteDisplay(sub, colors.onSurfaceVariant) }
+    val display = remember(sub, colors.onSurfaceVariant, colors.primary) {
+        buildNoteDisplay(sub, colors.onSurfaceVariant, linkColor = colors.primary)
+    }
+    var isFocused by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     val transformation = remember(display) { NoteVisualTransformation(sub, display) }
     val focusRequester = remember { FocusRequester() }
     val currentField by rememberUpdatedState(field)
@@ -302,9 +320,15 @@ private fun TextBlock(
             cursorBrush = SolidColor(colors.primary),
             onTextLayout = { layout = it },
             modifier = modifier
+                .linkTaps(enabled = !isFocused && display.links.isNotEmpty(), display = display, layout = { layout }) { uri ->
+                    runCatching { uriHandler.openUri(uri) }
+                }
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
-                .onFocusChanged { onFocusChanged(it.isFocused) }
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                    onFocusChanged(it.isFocused)
+                }
                 .onPreviewKeyEvent { event ->
                     val atStart = currentField.selection == TextRange.Zero
                     if (block.key.isNotEmpty() && atStart && event.key == Key.Backspace && event.type == KeyEventType.KeyDown) {
@@ -527,5 +551,27 @@ private fun StyleButton(label: Int, active: Boolean, onClick: () -> Unit) {
             color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+/**
+ * While the note isn't being edited, a tap on a link opens it instead of placing the caret
+ * (Apple Notes behaves the same way). While editing, links are ordinary text.
+ */
+private fun Modifier.linkTaps(
+    enabled: Boolean,
+    display: NoteDisplay,
+    layout: () -> TextLayoutResult?,
+    onOpen: (String) -> Unit,
+): Modifier = if (!enabled) this else pointerInput(display) {
+    awaitEachGesture {
+        val down = awaitFirstDown(pass = PointerEventPass.Initial)
+        val textLayout = layout() ?: return@awaitEachGesture
+        val offset = display.mapping.transformedToOriginal(textLayout.getOffsetForPosition(down.position))
+        val link = display.links.firstOrNull { offset >= it.start && offset < it.end } ?: return@awaitEachGesture
+        down.consume()
+        val up = waitForUpOrCancellation(pass = PointerEventPass.Initial) ?: return@awaitEachGesture
+        up.consume()
+        onOpen(link.uri)
     }
 }
