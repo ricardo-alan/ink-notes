@@ -1,5 +1,7 @@
 package app.inknotes.data
 
+import app.inknotes.model.LineFormat
+import app.inknotes.model.LineStyle
 import app.inknotes.model.NoteContent
 import app.inknotes.model.NoteTables
 import kotlinx.coroutines.flow.Flow
@@ -65,6 +67,15 @@ class NotesRepository(
         )
         dao.upsertNote(entity)
         return entity
+    }
+
+    /** Creates a note from text shared by another app: first line becomes the title. Returns its id. */
+    suspend fun createFromText(text: String): String {
+        val id = newId()
+        val lineCount = text.count { it == '\n' } + 1
+        val lines = List(lineCount) { if (it == 0) LineFormat(LineStyle.Title) else LineFormat(LineStyle.Body) }
+        saveContent(id, folderId = null, content = NoteContent(text = text, lines = lines))
+        return id
     }
 
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setPinned(id, pinned, clock())

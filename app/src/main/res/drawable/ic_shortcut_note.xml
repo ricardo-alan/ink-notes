@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher shortcut icon: the app's dark gray with a light glyph. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground>
+        <vector
+            android:width="108dp"
+            android:height="108dp"
+            android:viewportWidth="108"
+            android:viewportHeight="108">
+            <group android:scaleX="2" android:scaleY="2" android:translateX="30" android:translateY="30">
+                <path android:fillColor="#FFF7F4EC" android:pathData="M3,10h11v2H3V10z M3,8h11V6H3V8z M3,16h7v-2H3V16z M18.01,12.87l0.71,-0.71c0.39,-0.39 1.02,-0.39 1.41,0l0.71,0.71c0.39,0.39 0.39,1.02 0,1.41l-0.71,0.71L18.01,12.87z M17.3,13.58l-5.3,5.3V21h2.12l5.3,-5.3L17.3,13.58z" />
+            </group>
+        </vector>
+    </foreground>
+</adaptive-icon>

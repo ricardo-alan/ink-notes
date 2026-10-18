@@ -82,5 +82,9 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.play.services.auth)
 
+    // Home screen widget
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
     testImplementation(libs.junit)
 }

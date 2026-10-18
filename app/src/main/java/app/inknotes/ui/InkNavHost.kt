@@ -9,12 +9,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.inknotes.InkApplication
+import app.inknotes.InkIntents
 import app.inknotes.ui.editor.EditorScreen
 import app.inknotes.ui.folders.FoldersScreen
 import app.inknotes.ui.notes.NotesScreen
@@ -38,13 +42,26 @@ data class NotesRoute(val scope: String, val folderId: String? = null) {
     }
 }
 
-/** A null [noteId] creates a new note in [folderId]. */
+/** A null [noteId] creates a new note in [folderId], starting as a checklist if [checklist]. */
 @Serializable
-data class EditorRoute(val noteId: String? = null, val folderId: String? = null)
+data class EditorRoute(val noteId: String? = null, val folderId: String? = null, val checklist: Boolean = false)
 
 @Composable
-fun InkNavHost() {
+fun InkNavHost(request: InkIntents.Request? = null, onRequestHandled: () -> Unit = {}) {
     val nav = rememberNavController()
+    val repository = (LocalContext.current.applicationContext as InkApplication).repository
+    LaunchedEffect(request) {
+        val route = when (request) {
+            null -> return@LaunchedEffect
+            InkIntents.Request.NewNote -> EditorRoute()
+            InkIntents.Request.NewChecklist -> EditorRoute(checklist = true)
+            is InkIntents.Request.OpenNote -> EditorRoute(noteId = request.noteId)
+            is InkIntents.Request.SharedText -> EditorRoute(noteId = repository.createFromText(request.text))
+        }
+        // Always on top of the folder list, so Back leads into the app.
+        nav.navigate(route) { popUpTo<FoldersRoute>() }
+        onRequestHandled()
+    }
     val slideSpec = spring<IntOffset>(dampingRatio = 0.9f, stiffness = 500f)
     NavHost(
         navController = nav,

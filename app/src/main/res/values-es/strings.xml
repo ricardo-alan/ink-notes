@@ -105,4 +105,10 @@
     <string name="pure_black_summary">Fondo negro en modo oscuro. Ahorra batería en pantallas OLED.</string>
     <string name="layout_grid">Vista de galería</string>
     <string name="layout_list">Vista de lista</string>
+
+    <!-- Captura rápida -->
+    <string name="new_checklist">Nueva checklist</string>
+    <string name="share_target_label">Nueva nota</string>
+    <string name="widget_name">Notas</string>
+    <string name="widget_description">Tus notas fijadas y recientes</string>
 </resources>

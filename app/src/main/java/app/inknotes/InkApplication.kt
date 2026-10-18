@@ -5,11 +5,17 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import app.inknotes.data.InkDatabase
+import app.inknotes.data.NoteScope
 import app.inknotes.data.NotesRepository
 import app.inknotes.settings.AppearanceSettings
 import app.inknotes.sync.DriveSync
+import app.inknotes.widget.InkWidget
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class InkApplication : Application() {
@@ -25,9 +31,19 @@ class InkApplication : Application() {
 
     val appearance: AppearanceSettings by lazy { AppearanceSettings(this) }
 
+    @OptIn(FlowPreview::class)
     override fun onCreate() {
         super.onCreate()
         appScope.launch { repository.purgeExpiredTrash() }
+        InkIntents.publishShortcuts(this)
+        // Keep the home screen widget in step with the notes (cheap when no widget is placed).
+        appScope.launch {
+            repository.notes(NoteScope.All, "")
+                .map { notes -> notes.take(InkWidget.MAX_NOTES).map { listOf(it.id, it.title, it.preview, it.isPinned) } }
+                .distinctUntilChanged()
+                .debounce(500)
+                .collect { InkWidget.refresh(this@InkApplication) }
+        }
         // Sync (when turned on) as the app comes to the foreground and again as it leaves it.
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {

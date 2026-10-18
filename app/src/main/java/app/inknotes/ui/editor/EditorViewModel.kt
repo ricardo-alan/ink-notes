@@ -12,6 +12,7 @@ import androidx.navigation.toRoute
 import app.inknotes.InkApplication
 import app.inknotes.data.NotesRepository
 import app.inknotes.model.InlineStyle
+import app.inknotes.model.LineFormat
 import app.inknotes.model.LineStyle
 import app.inknotes.model.NoteContent
 import app.inknotes.model.NoteBlock
@@ -95,7 +96,15 @@ class EditorViewModel(
                     modifiedAt = entity.modifiedAt,
                 )
             } else {
-                _state.value = EditorUiState(loaded = true, isNew = true, focusRequest = EditorFocus.Text(""))
+                // A "new checklist" shortcut starts with a checklist item; its text becomes the title.
+                val start = if (route.checklist) NoteContent(lines = listOf(LineFormat(LineStyle.Checklist))) else NoteContent.Empty
+                _state.value = EditorUiState(
+                    loaded = true,
+                    isNew = true,
+                    content = start,
+                    fields = syncFields(start, emptyMap()),
+                    focusRequest = EditorFocus.Text(""),
+                )
             }
         }
     }
