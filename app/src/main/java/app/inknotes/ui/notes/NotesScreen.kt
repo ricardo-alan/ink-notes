@@ -149,7 +149,7 @@ fun NotesScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             LargeFlexibleTopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 subtitle = {
                     if (state.loaded) Text(pluralStringResource(R.plurals.note_count, state.notes.size, state.notes.size))
                 },
