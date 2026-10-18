@@ -112,4 +112,9 @@
     <string name="share_target_label">Nueva nota</string>
     <string name="widget_name">Notas</string>
     <string name="widget_description">Tus notas fijadas y recientes</string>
+    <string name="settings_section_notes">Notas</string>
+    <string name="move_checked">Mover marcados al final</string>
+    <string name="move_checked_summary">Al marcar un elemento, baja debajo de los pendientes.</string>
+    <string name="move_up">Mover arriba</string>
+    <string name="move_down">Mover abajo</string>
 </resources>

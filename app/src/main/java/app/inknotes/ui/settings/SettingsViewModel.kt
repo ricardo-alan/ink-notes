@@ -67,6 +67,8 @@ class SettingsViewModel(
 
     fun setPureBlack(enabled: Boolean) = appearanceSettings.setPureBlack(enabled)
 
+    fun setMoveCheckedToBottom(enabled: Boolean) = appearanceSettings.setMoveCheckedToBottom(enabled)
+
     fun turnOn() = connect(account = null)
 
     fun signInAgain() = connect(account = sync.settings.current.account)

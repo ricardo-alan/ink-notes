@@ -25,6 +25,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -243,6 +255,7 @@ private fun NoteBody(state: EditorUiState, viewModel: EditorViewModel) {
                             onFocusRequestHandled = viewModel::consumeFocusRequest,
                             onValueChange = { viewModel.onTextChange(block.key, it) },
                             onToggleChecked = { line -> viewModel.toggleChecked(block.key, line) },
+                            onMoveLine = { from, to -> viewModel.moveLine(block.key, from, to) },
                             onFocusChanged = { viewModel.onFocusChanged(EditorFocus.Text(block.key), it) },
                             onBackspaceAtStart = { viewModel.onBackspaceAtStart(block.key) },
                             // The last field fills the rest of the screen, so tapping anywhere below the note types into it.
@@ -287,6 +300,7 @@ private fun TextBlock(
     onFocusRequestHandled: () -> Unit,
     onValueChange: (TextFieldValue) -> Unit,
     onToggleChecked: (Int) -> Unit,
+    onMoveLine: (from: Int, to: Int) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     onBackspaceAtStart: () -> Unit,
     modifier: Modifier = Modifier,
@@ -339,7 +353,7 @@ private fun TextBlock(
                     }
                 },
         )
-        layout?.let { ListMarkers(sub, display, it, textStyle, onToggleChecked) }
+        layout?.let { ListMarkers(sub, display, it, textStyle, onToggleChecked, onMoveLine) }
     }
 }
 
@@ -370,8 +384,19 @@ private fun ListMarkers(
     layout: TextLayoutResult,
     textStyle: TextStyle,
     onToggleChecked: (Int) -> Unit,
+    onMoveLine: (from: Int, to: Int) -> Unit,
 ) {
     if (layout.layoutInput.text != display.text) return
+    /** Top and bottom (px) of each line's first visual line, for markers and drop targets. */
+    fun lineBounds(index: Int): Pair<Float, Float> {
+        val offset = display.mapping.originalToTransformed(NoteEditing.lineStart(content.text, index).coerceAtMost(content.text.length))
+        val visualLine = layout.getLineForOffset(offset)
+        return layout.getLineTop(visualLine) to layout.getLineBottom(visualLine)
+    }
+    var drag by remember { mutableStateOf<ItemDrag?>(null) }
+    val haptics = LocalHapticFeedback.current
+    val moveUpLabel = stringResource(R.string.move_up)
+    val moveDownLabel = stringResource(R.string.move_down)
     val density = LocalDensity.current
     val colors = MaterialTheme.colorScheme
     val indent = with(density) { ListIndent.toDp() }
@@ -381,10 +406,8 @@ private fun ListMarkers(
     content.lines.forEachIndexed { index, format ->
         number = if (format.style == LineStyle.Numbered) number + 1 else 0
         if (!format.style.isList) return@forEachIndexed
-        val offset = display.mapping.originalToTransformed(NoteEditing.lineStart(content.text, index).coerceAtMost(content.text.length))
-        val visualLine = layout.getLineForOffset(offset)
-        val top = layout.getLineTop(visualLine)
-        val height = with(density) { (layout.getLineBottom(visualLine) - top).toDp() }
+        val (top, bottom) = lineBounds(index)
+        val height = with(density) { (bottom - top).toDp() }
         val position = Modifier
             .offset { IntOffset(0, top.toInt()) }
             .width(indent)
@@ -393,19 +416,56 @@ private fun ListMarkers(
         when (format.style) {
             LineStyle.Checklist -> {
                 val lineText = NoteEditing.lineText(content.text, index)
+                val run = NoteEditing.listRun(content, index)
+                val dragging = drag?.from == index
                 Box(
                     contentAlignment = Alignment.CenterStart,
-                    modifier = position.semantics(mergeDescendants = true) {
-                        role = Role.Checkbox
-                        contentDescription = lineText.ifBlank { itemLabel }
-                        stateDescription = if (format.checked) "✓" else ""
-                    },
+                    modifier = position
+                        .graphicsLayer {
+                            translationY = if (dragging) drag?.dy ?: 0f else 0f
+                            scaleX = if (dragging) 1.15f else 1f
+                            scaleY = if (dragging) 1.15f else 1f
+                        }
+                        .pointerInput(index) { detectTapGestures(onTap = { onToggleChecked(index) }) }
+                        // Long-press the circle and drag to reorder within its checklist.
+                        .pointerInput(index, run) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    drag = ItemDrag(from = index, to = index, dy = 0f)
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    val current = drag ?: return@detectDragGesturesAfterLongPress
+                                    val dy = current.dy + amount.y
+                                    val (fromTop, fromBottom) = lineBounds(index)
+                                    val y = (fromTop + fromBottom) / 2 + dy
+                                    val target = run.minByOrNull { line ->
+                                        val (t, b) = lineBounds(line)
+                                        kotlin.math.abs((t + b) / 2 - y)
+                                    } ?: index
+                                    if (target != current.to) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    drag = current.copy(to = target, dy = dy)
+                                },
+                                onDragEnd = {
+                                    drag?.let { if (it.to != it.from) onMoveLine(it.from, it.to) }
+                                    drag = null
+                                },
+                                onDragCancel = { drag = null },
+                            )
+                        }
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Checkbox
+                            contentDescription = lineText.ifBlank { itemLabel }
+                            toggleableState = ToggleableState(format.checked)
+                            onClick { onToggleChecked(index); true }
+                            customActions = buildList {
+                                if (index > run.first) add(CustomAccessibilityAction(moveUpLabel) { onMoveLine(index, index - 1); true })
+                                if (index < run.last) add(CustomAccessibilityAction(moveDownLabel) { onMoveLine(index, index + 1); true })
+                            }
+                        },
                 ) {
-                    IconToggleButton(
-                        checked = format.checked,
-                        onCheckedChange = { onToggleChecked(index) },
-                        modifier = Modifier.offset(x = (-12).dp).size(44.dp),
-                    ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.offset(x = (-12).dp).size(44.dp)) {
                         CheckCircle(checked = format.checked)
                     }
                 }
@@ -418,7 +478,22 @@ private fun ListMarkers(
             }
         }
     }
+
+    // Where the dragged item will land: a line above or below the target item.
+    drag?.takeIf { it.to != it.from }?.let { d ->
+        val (top, bottom) = lineBounds(d.to)
+        val y = if (d.to > d.from) bottom else top
+        Box(
+            Modifier
+                .offset { IntOffset(0, y.toInt() - 1.dp.roundToPx()) }
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(colors.primary, CircleShape),
+        )
+    }
 }
+
+private data class ItemDrag(val from: Int, val to: Int, val dy: Float)
 
 @Composable
 private fun CheckCircle(checked: Boolean) {

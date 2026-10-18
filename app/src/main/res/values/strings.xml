@@ -112,4 +112,9 @@
     <string name="share_target_label">New note</string>
     <string name="widget_name">Notes</string>
     <string name="widget_description">Your pinned and recent notes</string>
+    <string name="settings_section_notes">Notes</string>
+    <string name="move_checked">Move checked items to bottom</string>
+    <string name="move_checked_summary">When you check an item, it moves below the unchecked ones.</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
 </resources>

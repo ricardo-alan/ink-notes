@@ -86,6 +86,73 @@ object NoteEditing {
         return content.copy(lines = lines)
     }
 
+    /**
+     * Toggles a checklist item. With [moveChecked], a newly checked item drops to the end of its
+     * checklist and an unchecked one rises to just above the checked items, like Apple Notes.
+     */
+    fun toggleChecked(content: NoteContent, line: Int, moveChecked: Boolean): NoteContent {
+        val toggled = toggleChecked(content, line)
+        if (!moveChecked || toggled === content) return toggled
+        val run = listRun(toggled, line)
+        val nowChecked = toggled.lines[line].checked
+        val target = if (nowChecked) {
+            run.last
+        } else {
+            // First checked item above which it should sit, ignoring itself.
+            val firstChecked = run.firstOrNull { it != line && toggled.lines[it].checked } ?: return toggled
+            if (firstChecked > line) firstChecked - 1 else firstChecked
+        }
+        return moveLine(toggled, line, target)
+    }
+
+    /** The consecutive lines around [line] that share its list style. */
+    fun listRun(content: NoteContent, line: Int): IntRange {
+        val style = content.lines.getOrNull(line)?.style ?: return line..line
+        if (!style.isList) return line..line
+        var first = line
+        while (first > 0 && content.lines[first - 1].style == style) first--
+        var last = line
+        while (last < content.lines.lastIndex && content.lines[last + 1].style == style) last++
+        return first..last
+    }
+
+    /** Moves line [from] so it ends up at index [to], carrying its text, format and inline styles. */
+    fun moveLine(content: NoteContent, from: Int, to: Int): NoteContent {
+        val count = content.lines.size
+        if (from == to || from !in 0 until count || to !in 0 until count) return content
+        val slices = slices(content).toMutableList()
+        slices.add(to, slices.removeAt(from))
+        return join(content, slices)
+    }
+
+    private data class LineSlice(val text: String, val format: LineFormat, val spans: List<InlineSpan>)
+
+    private fun slices(content: NoteContent): List<LineSlice> {
+        val text = content.text
+        var start = 0
+        return content.lines.mapIndexed { index, format ->
+            val end = if (index == content.lines.lastIndex) text.length else text.indexOf('\n', start).let { if (it == -1) text.length else it }
+            val spans = content.spans
+                .filter { it.start < end && it.end > start }
+                .map { it.copy(start = maxOf(it.start, start) - start, end = minOf(it.end, end) - start) }
+            LineSlice(text.substring(start, end), format, spans).also { start = minOf(end + 1, text.length) }
+        }
+    }
+
+    private fun join(base: NoteContent, slices: List<LineSlice>): NoteContent {
+        var offset = 0
+        val spans = mutableListOf<InlineSpan>()
+        slices.forEach { slice ->
+            slice.spans.mapTo(spans) { it.copy(start = it.start + offset, end = it.end + offset) }
+            offset += slice.text.length + 1
+        }
+        return base.copy(
+            text = slices.joinToString("\n") { it.text },
+            lines = slices.map { it.format },
+            spans = normalize(spans),
+        )
+    }
+
     /** Toggles an inline style over the selection (or the word under the cursor when nothing is selected). */
     fun toggleInline(content: NoteContent, selStart: Int, selEnd: Int, style: InlineStyle): NoteContent {
         var start = minOf(selStart, selEnd)

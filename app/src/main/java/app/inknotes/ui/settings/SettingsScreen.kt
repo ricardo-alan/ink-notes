@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.Palette
@@ -105,6 +106,22 @@ fun SettingsScreen(
                     onThemeMode = viewModel::setThemeMode,
                     onPureBlack = viewModel::setPureBlack,
                 )
+            }
+            item {
+                GroupedSection(header = stringResource(R.string.settings_section_notes)) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.move_checked)) },
+                        supportingContent = { Text(stringResource(R.string.move_checked_summary)) },
+                        leadingContent = { Icon(Icons.Outlined.Checklist, contentDescription = null) },
+                        trailingContent = { Switch(checked = state.appearance.moveCheckedToBottom, onCheckedChange = null) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.toggleable(
+                            value = state.appearance.moveCheckedToBottom,
+                            role = Role.Switch,
+                            onValueChange = viewModel::setMoveCheckedToBottom,
+                        ),
+                    )
+                }
             }
             item {
                 GroupedSection(header = stringResource(R.string.settings_section_sync)) {

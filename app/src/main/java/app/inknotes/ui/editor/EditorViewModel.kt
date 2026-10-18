@@ -146,7 +146,17 @@ class EditorViewModel(
         val s = _state.value
         val block = s.textBlock(key) ?: return
         val sub = NoteTables.subContent(s.content, block)
-        updateContent(NoteTables.replaceText(s.content, block, NoteEditing.toggleChecked(sub, line)), s.fields)
+        val moveChecked = app.appearance.state.value.moveCheckedToBottom
+        updateContent(NoteTables.replaceText(s.content, block, NoteEditing.toggleChecked(sub, line, moveChecked)), s.fields)
+    }
+
+    /** Reorders a list item (drag and drop, or the accessibility move actions). */
+    fun moveLine(key: String, from: Int, to: Int) {
+        val s = _state.value
+        val block = s.textBlock(key) ?: return
+        val sub = NoteTables.subContent(s.content, block)
+        val moved = NoteEditing.moveLine(sub, from, to)
+        if (moved !== sub) updateContent(NoteTables.replaceText(s.content, block, moved), s.fields)
     }
 
     private fun editFocusedText(edit: (NoteContent, TextFieldValue) -> NoteContent) {
