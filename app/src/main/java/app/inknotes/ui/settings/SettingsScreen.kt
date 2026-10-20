@@ -125,7 +125,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            if (AssistantSettings.isSupported) {
+            if (AssistantSettings.SHOW_IN_SETTINGS && AssistantSettings.isSupported) {
                 item {
                     GroupedSection(header = stringResource(R.string.settings_section_assistants)) {
                         ListItem(

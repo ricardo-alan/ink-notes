@@ -30,5 +30,11 @@ class AssistantSettings(context: Context) {
 
         /** App Functions only exist on Android 16 and later. */
         val isSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
+
+        /**
+         * Hidden for now: assistants calling App Functions are still rolling out, so the switch did
+         * nothing visible for users. The functions stay registered; reading stays off (the default).
+         */
+        const val SHOW_IN_SETTINGS = false
     }
 }
