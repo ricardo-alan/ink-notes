@@ -8,6 +8,7 @@ import app.inknotes.data.InkDatabase
 import app.inknotes.data.NoteScope
 import app.inknotes.data.NotesRepository
 import app.inknotes.settings.AppearanceSettings
+import app.inknotes.settings.AssistantSettings
 import app.inknotes.sync.DriveSync
 import app.inknotes.widget.InkWidget
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,8 @@ class InkApplication : Application() {
     val sync: DriveSync by lazy { DriveSync(this, database.notesDao()) }
 
     val appearance: AppearanceSettings by lazy { AppearanceSettings(this) }
+
+    val assistants: AssistantSettings by lazy { AssistantSettings(this) }
 
     /**
      * Where to navigate next, from a shortcut, tile, widget or share. Lives here rather than in

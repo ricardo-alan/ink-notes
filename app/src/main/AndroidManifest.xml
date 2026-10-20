@@ -43,6 +43,23 @@
                 android:value="false" />
         </service>
 
+        <!-- Actions for system assistants (App Functions). Generated from appfunctions/InkAppFunctions;
+             only bound by Android 16+, which knows this intent action. -->
+        <service
+            android:name=".appfunctions.InkAppFunctionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE">
+            <property
+                android:name="android.app.appfunctions.schema"
+                android:value="app_functions_schema.xsd" />
+            <property
+                android:name="android.app.appfunctions.v2"
+                android:value="ink_app_functions.xml" />
+            <intent-filter>
+                <action android:name="android.app.appfunctions.AppFunctionService" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".widget.InkWidgetReceiver"
             android:exported="true"

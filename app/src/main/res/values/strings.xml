@@ -115,6 +115,9 @@
     <string name="settings_section_notes">Notes</string>
     <string name="move_checked">Move checked items to bottom</string>
     <string name="move_checked_summary">When you check an item, it moves below the unchecked ones.</string>
+    <string name="settings_section_assistants">Assistants</string>
+    <string name="assistants_read">Allow assistants to read notes</string>
+    <string name="assistants_read_summary">Assistants on this device can always create notes and add checklist items. Turn this on to also let them search and read your notes.</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
 </resources>

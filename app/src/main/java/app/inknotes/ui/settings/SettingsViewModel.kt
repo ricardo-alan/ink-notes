@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.inknotes.settings.Appearance
 import app.inknotes.settings.AppearanceSettings
+import app.inknotes.settings.AssistantSettings
 import app.inknotes.settings.ThemeMode
 import app.inknotes.sync.DriveClient
 import app.inknotes.sync.DriveSync
@@ -33,6 +34,8 @@ data class SettingsUiState(
     val appearance: Appearance = Appearance(),
     /** Waiting for Google to grant Drive access. */
     val connecting: Boolean = false,
+    /** Assistants may read notes through App Functions. */
+    val assistantsCanRead: Boolean = false,
 )
 
 sealed interface SettingsEvent {
@@ -44,6 +47,7 @@ sealed interface SettingsEvent {
 class SettingsViewModel(
     private val sync: DriveSync,
     private val appearanceSettings: AppearanceSettings,
+    private val assistantSettings: AssistantSettings,
 ) : ViewModel() {
 
     private val connecting = MutableStateFlow(false)
@@ -55,12 +59,13 @@ class SettingsViewModel(
         sync.isSyncing,
         appearanceSettings.state,
         connecting,
-    ) { status, syncing, appearance, connecting ->
-        SettingsUiState(status, syncing, appearance, connecting)
+        assistantSettings.allowRead,
+    ) { status, syncing, appearance, connecting, assistantsCanRead ->
+        SettingsUiState(status, syncing, appearance, connecting, assistantsCanRead)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        SettingsUiState(sync.settings.current, appearance = appearanceSettings.state.value),
+        SettingsUiState(sync.settings.current, appearance = appearanceSettings.state.value, assistantsCanRead = assistantSettings.allowRead.value),
     )
 
     fun setThemeMode(mode: ThemeMode) = appearanceSettings.setThemeMode(mode)
@@ -68,6 +73,8 @@ class SettingsViewModel(
     fun setPureBlack(enabled: Boolean) = appearanceSettings.setPureBlack(enabled)
 
     fun setMoveCheckedToBottom(enabled: Boolean) = appearanceSettings.setMoveCheckedToBottom(enabled)
+
+    fun setAssistantsCanRead(enabled: Boolean) = assistantSettings.setAllowRead(enabled)
 
     fun turnOn() = connect(account = null)
 
@@ -114,6 +121,6 @@ class SettingsViewModel(
     }
 
     companion object {
-        val Factory = viewModelFactory { initializer { SettingsViewModel(inkApp.sync, inkApp.appearance) } }
+        val Factory = viewModelFactory { initializer { SettingsViewModel(inkApp.sync, inkApp.appearance, inkApp.assistants) } }
     }
 }

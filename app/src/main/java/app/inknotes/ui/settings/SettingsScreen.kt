@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Contrast
@@ -55,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.inknotes.R
 import app.inknotes.settings.Appearance
+import app.inknotes.settings.AssistantSettings
 import app.inknotes.settings.ThemeMode
 import app.inknotes.sync.SyncError
 import app.inknotes.ui.common.GroupedSection
@@ -121,6 +123,24 @@ fun SettingsScreen(
                             onValueChange = viewModel::setMoveCheckedToBottom,
                         ),
                     )
+                }
+            }
+            if (AssistantSettings.isSupported) {
+                item {
+                    GroupedSection(header = stringResource(R.string.settings_section_assistants)) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.assistants_read)) },
+                            supportingContent = { Text(stringResource(R.string.assistants_read_summary)) },
+                            leadingContent = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                            trailingContent = { Switch(checked = state.assistantsCanRead, onCheckedChange = null) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.toggleable(
+                                value = state.assistantsCanRead,
+                                role = Role.Switch,
+                                onValueChange = viewModel::setAssistantsCanRead,
+                            ),
+                        )
+                    }
                 }
             }
             item {
