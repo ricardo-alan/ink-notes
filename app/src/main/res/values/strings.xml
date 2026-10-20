@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ink</string>
+    <string name="app_name">Ink Notes</string>
 
     <!-- Folders -->
     <string name="folders_title">Folders</string>
@@ -90,11 +90,11 @@
     <string name="sync_in_progress">Syncing…</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_sign_in_again">Sign in</string>
-    <string name="sync_error_auth">Ink can’t access your Google Drive anymore.</string>
-    <string name="sync_error_network">Couldn’t reach Google Drive. Ink will try again later.</string>
-    <string name="sync_error_other">Sync didn’t finish. Ink will try again later.</string>
+    <string name="sync_error_auth">Ink Notes can’t access your Google Drive anymore.</string>
+    <string name="sync_error_network">Couldn’t reach Google Drive. Ink Notes will try again later.</string>
+    <string name="sync_error_other">Sync didn’t finish. Ink Notes will try again later.</string>
     <string name="sync_connect_failed">Couldn’t connect to Google Drive</string>
-    <string name="sync_privacy_info">Notes are saved in a hidden app folder in your Google Drive that only Ink can open. They count toward your Drive storage. Turning sync off keeps your notes on this device.</string>
+    <string name="sync_privacy_info">Notes are saved in a hidden app folder in your Google Drive that only Ink Notes can open. They count toward your Drive storage. Turning sync off keeps your notes on this device.</string>
 
     <!-- Appearance -->
     <string name="settings_section_appearance">Appearance</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ink</string>
+    <string name="app_name">Ink Notes</string>
 
     <!-- Carpetas -->
     <string name="folders_title">Carpetas</string>
@@ -90,11 +90,11 @@
     <string name="sync_in_progress">Sincronizando…</string>
     <string name="sync_now">Sincronizar</string>
     <string name="sync_sign_in_again">Iniciar sesión</string>
-    <string name="sync_error_auth">Ink ya no puede acceder a tu Google Drive.</string>
-    <string name="sync_error_network">No se pudo conectar con Google Drive. Ink lo volverá a intentar más tarde.</string>
-    <string name="sync_error_other">La sincronización no terminó. Ink lo volverá a intentar más tarde.</string>
+    <string name="sync_error_auth">Ink Notes ya no puede acceder a tu Google Drive.</string>
+    <string name="sync_error_network">No se pudo conectar con Google Drive. Ink Notes lo volverá a intentar más tarde.</string>
+    <string name="sync_error_other">La sincronización no terminó. Ink Notes lo volverá a intentar más tarde.</string>
     <string name="sync_connect_failed">No se pudo conectar con Google Drive</string>
-    <string name="sync_privacy_info">Las notas se guardan en una carpeta oculta de tu Google Drive que solo Ink puede abrir. Ocupan espacio de tu almacenamiento de Drive. Si desactivas la sincronización, tus notas se quedan en este dispositivo.</string>
+    <string name="sync_privacy_info">Las notas se guardan en una carpeta oculta de tu Google Drive que solo Ink Notes puede abrir. Ocupan espacio de tu almacenamiento de Drive. Si desactivas la sincronización, tus notas se quedan en este dispositivo.</string>
 
     <!-- Apariencia -->
     <string name="settings_section_appearance">Apariencia</string>
