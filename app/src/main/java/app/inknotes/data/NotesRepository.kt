@@ -44,30 +44,49 @@ class NotesRepository(
 
     suspend fun loadContent(id: String): Pair<NoteEntity, NoteContent>? {
         val note = dao.getNote(id) ?: return null
-        val content = runCatching { NoteTables.normalize(json.decodeFromString<NoteContent>(note.content)) }.getOrDefault(NoteContent.Empty)
-        return note to content
+        return note to decode(note)
     }
+
+    fun decode(note: NoteEntity): NoteContent =
+        runCatching { NoteTables.normalize(json.decodeFromString<NoteContent>(note.content)) }.getOrDefault(NoteContent.Empty)
+
+    /** A note's row as stored (tombstones included), updated on every write by anyone. */
+    fun observeNoteRow(id: String): Flow<NoteEntity?> = dao.observeNoteRow(id)
+
+    suspend fun noteRow(id: String): NoteEntity? = dao.getNoteRow(id)
 
     /** Creates or updates a note's content. Returns the stored entity. */
     suspend fun saveContent(id: String, folderId: String?, content: NoteContent): NoteEntity {
-        val now = clock()
-        val existing = dao.getNote(id)
-        val entity = NoteEntity(
-            id = id,
-            folderId = existing?.folderId ?: folderId,
-            content = json.encodeToString(content.copy(version = NoteContent.CURRENT_VERSION)),
-            title = content.title,
-            preview = content.preview,
-            searchText = normalizeForSearch(content.plainText),
-            isPinned = existing?.isPinned ?: false,
-            createdAt = existing?.createdAt ?: now,
-            modifiedAt = now,
-            updatedAt = now,
-            trashedAt = existing?.trashedAt,
-        )
+        val entity = buildEntity(id, folderId, content, dao.getNote(id), clock())
         dao.upsertNote(entity)
         return entity
     }
+
+    /**
+     * Like [saveContent], but only if nobody wrote the note since the caller saw it with
+     * [expectedUpdatedAt] (null = it didn't exist). Returns null when someone did, so the caller can
+     * reconcile first. A deleted note (tombstone) is brought back.
+     */
+    suspend fun saveContentIfUnchanged(id: String, folderId: String?, content: NoteContent, expectedUpdatedAt: Long?): NoteEntity? =
+        dao.upsertNoteIfUnchanged(id, expectedUpdatedAt) { row ->
+            // Strictly newer than what it replaces, so every write is a distinct version.
+            val now = maxOf(clock(), (row?.updatedAt ?: 0L) + 1)
+            buildEntity(id, folderId, content, row?.takeUnless { it.isDeleted }, now)
+        }
+
+    private fun buildEntity(id: String, folderId: String?, content: NoteContent, existing: NoteEntity?, now: Long) = NoteEntity(
+        id = id,
+        folderId = existing?.folderId ?: folderId,
+        content = json.encodeToString(content.copy(version = NoteContent.CURRENT_VERSION)),
+        title = content.title,
+        preview = content.preview,
+        searchText = normalizeForSearch(content.plainText),
+        isPinned = existing?.isPinned ?: false,
+        createdAt = existing?.createdAt ?: now,
+        modifiedAt = now,
+        updatedAt = now,
+        trashedAt = existing?.trashedAt,
+    )
 
     /** Creates a note from text shared by another app: first line becomes the title. Returns its id. */
     suspend fun createFromText(text: String): String {

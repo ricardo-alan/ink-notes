@@ -120,4 +120,6 @@
     <string name="assistants_read_summary">Los asistentes de este dispositivo siempre pueden crear notas y añadir elementos a listas. Actívalo para que también puedan buscar y leer tus notas.</string>
     <string name="move_up">Mover arriba</string>
     <string name="move_down">Mover abajo</string>
+    <string name="conflict_copy_suffix">" (copia en conflicto)"</string>
+    <string name="conflict_copy_saved">Esta nota también cambió en otro sitio. Esa versión se guardó como una nota aparte.</string>
 </resources>

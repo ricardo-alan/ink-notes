@@ -60,8 +60,26 @@ interface NotesDao {
     @Query("SELECT * FROM notes WHERE id = :id AND isDeleted = 0")
     suspend fun getNote(id: String): NoteEntity?
 
+    /** The row as stored, tombstones included, so an open editor also sees deletions. */
+    @Query("SELECT * FROM notes WHERE id = :id")
+    fun observeNoteRow(id: String): Flow<NoteEntity?>
+
+    @Query("SELECT * FROM notes WHERE id = :id")
+    suspend fun getNoteRow(id: String): NoteEntity?
+
     @Upsert
     suspend fun upsertNote(note: NoteEntity)
+
+    /**
+     * Compare-and-set for the editor: stores `build(row)` only if the row's updatedAt is still
+     * [expectedUpdatedAt] (null = no row yet). Returns the stored row, or null if someone else wrote first.
+     */
+    @Transaction
+    suspend fun upsertNoteIfUnchanged(id: String, expectedUpdatedAt: Long?, build: (NoteEntity?) -> NoteEntity): NoteEntity? {
+        val row = getNoteRow(id)
+        if (row?.updatedAt != expectedUpdatedAt) return null
+        return build(row).also { upsertNote(it) }
+    }
 
     @Query("UPDATE notes SET isPinned = :pinned, updatedAt = :now WHERE id = :id")
     suspend fun setPinned(id: String, pinned: Boolean, now: Long)

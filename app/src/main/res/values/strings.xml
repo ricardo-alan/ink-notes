@@ -120,4 +120,6 @@
     <string name="assistants_read_summary">Assistants on this device can always create notes and add checklist items. Turn this on to also let them search and read your notes.</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
+    <string name="conflict_copy_suffix">" (conflict copy)"</string>
+    <string name="conflict_copy_saved">This note also changed elsewhere. That version was kept as a separate note.</string>
 </resources>
