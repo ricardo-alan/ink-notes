@@ -57,6 +57,11 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+ksp {
+    // Collects the @AppFunctionDeclaration functions of this (the only) module into the app's inventory.
+    arg("appfunctions:aggregateAppFunctions", "true")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -85,6 +90,10 @@ dependencies {
     // Home screen widget
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+
+    // Lets system assistants call Ink's functions (Android 16+ only; inert on older versions)
+    implementation(libs.androidx.appfunctions)
+    ksp(libs.androidx.appfunctions.compiler)
 
     testImplementation(libs.junit)
 }
