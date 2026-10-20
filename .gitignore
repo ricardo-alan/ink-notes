@@ -9,3 +9,7 @@
 /captures/
 .externalNativeBuild/
 .cxx/
+# Signing: never commit keys or their passwords
+keystore.properties
+*.jks
+*.keystore
