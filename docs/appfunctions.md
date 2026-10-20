@@ -104,6 +104,19 @@ answers `User is not unlocked`; in our testing a reboot (`adb reboot`, which kee
 `adb shell wm dismiss-keyguard`, sometimes gave a window where calls worked, but not reliably.
 `list-app-functions`, `is-enabled` and `set-enabled` keep working throughout.
 
+### Without App Functions: debug-only external edits
+
+To test how an open editor copes with writes from elsewhere when `execute-app-function` times out,
+debug builds have `ExternalEditReceiver` (src/debug), which writes through the repository just like
+`addChecklistItems`:
+
+```bash
+adb shell am broadcast -n app.inknotes.debug/app.inknotes.debug.ExternalEditReceiver -a add --es title "Groceries" --es items "Eggs,Jam"
+```
+
+`-a replace --es from Milk --es to "Oat milk"` rewrites a line instead (an edit the editor can't
+merge, so it keeps a conflict copy; see `NoteMerge`).
+
 ### Verified on the emulator (2026-10-19)
 
 - `list-app-functions` shows all five functions with their descriptions.

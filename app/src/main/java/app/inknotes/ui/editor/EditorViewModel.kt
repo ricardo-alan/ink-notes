@@ -11,6 +11,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
 import app.inknotes.InkApplication
+import app.inknotes.R
+import app.inknotes.data.NoteEntity
 import app.inknotes.data.NotesRepository
 import app.inknotes.model.InlineStyle
 import app.inknotes.model.LineFormat
@@ -18,6 +20,7 @@ import app.inknotes.model.LineStyle
 import app.inknotes.model.NoteContent
 import app.inknotes.model.NoteBlock
 import app.inknotes.model.NoteEditing
+import app.inknotes.model.NoteMerge
 import app.inknotes.model.NoteTables
 import app.inknotes.ui.EditorRoute
 import app.inknotes.ui.common.inkApp
@@ -52,6 +55,8 @@ data class EditorUiState(
     val closed: Boolean = false,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
+    /** A message for the user (string resource), consumed by the screen. */
+    val notice: Int? = null,
 ) {
     /** The text block formatting applies to: the focused one, else the first. */
     val textKey: String get() = (focus as? EditorFocus.Text)?.key ?: ""
@@ -82,14 +87,26 @@ class EditorViewModel(
     private var persisted = false
     private var dirty = false
     private var saveJob: Job? = null
+    /** Guards saving and [onStored], so a write of ours is never mistaken for someone else's. */
     private val saveMutex = Mutex()
+
+    /*
+     * The note as last read from or written to the database, to tell our writes from other
+     * writers' (assistants, Drive sync, ...). [baseUpdatedAt] is the row's updatedAt, tombstones
+     * included (null = no row); [baseContent] is null when there's no live row.
+     */
+    private var baseContent: NoteContent? = null
+    private var baseUpdatedAt: Long? = null
 
     init {
         viewModelScope.launch {
-            val loaded = repository.loadContent(noteId)
+            val row = repository.noteRow(noteId)
+            baseUpdatedAt = row?.updatedAt
+            val loaded = row?.takeUnless { it.isDeleted }?.let { it to repository.decode(it) }
             if (loaded != null) {
                 val (entity, content) = loaded
                 persisted = true
+                baseContent = content
                 _state.value = EditorUiState(
                     loaded = true,
                     content = content,
@@ -109,8 +126,83 @@ class EditorViewModel(
                     focusRequest = EditorFocus.Text(""),
                 )
             }
+            repository.observeNoteRow(noteId).collect { row ->
+                saveMutex.withLock { onStored(row) }
+                if (dirty) scheduleSave()
+            }
         }
     }
+
+    /**
+     * Brings the editor up to date with the stored row when someone else wrote it. Must hold
+     * [saveMutex]. Leaves [dirty] set when the editor still has edits to save.
+     * See [NoteMerge] for the merge policy.
+     */
+    private suspend fun onStored(row: NoteEntity?) {
+        if (row?.updatedAt == baseUpdatedAt || _state.value.closed || !_state.value.loaded) return
+        baseUpdatedAt = row?.updatedAt
+        if (row == null || row.isDeleted) {
+            // Deleted elsewhere. Without unsaved edits there is nothing left to show; with them,
+            // keep editing: the next save brings the note back rather than losing what was typed.
+            baseContent = null
+            persisted = false
+            if (!dirty && !_state.value.isNew) {
+                saveJob?.cancel()
+                _state.update { it.copy(closed = true) }
+            }
+            return
+        }
+        persisted = true
+        _state.update { it.copy(isPinned = row.isPinned, modifiedAt = row.modifiedAt) }
+        val remote = repository.decode(row)
+        val base = baseContent ?: NoteContent.Empty
+        baseContent = remote
+        if (NoteMerge.same(remote, base)) return // pin, move, trash: content is unchanged
+
+        val local = _state.value.content
+        when (val outcome = NoteMerge.reconcile(base, local, remote)) {
+            is NoteMerge.Outcome.Apply -> {
+                if (!NoteMerge.same(outcome.content, local)) showExternalContent(outcome.content)
+                dirty = outcome.keptLocalEdits
+            }
+            is NoteMerge.Outcome.Conflict -> {
+                // Both sides edited: the user's version stays here, the other one becomes its own note.
+                val copy = NoteMerge.withTitleSuffix(outcome.copy, app.getString(R.string.conflict_copy_suffix))
+                repository.saveContent(NotesRepository.newId(), row.folderId, copy)
+                _state.update { it.copy(notice = R.string.conflict_copy_saved) }
+                dirty = true
+            }
+        }
+        if (!dirty) saveJob?.cancel()
+    }
+
+    /**
+     * Shows content written elsewhere, keeping each caret where it was relative to the text around
+     * it. Undo history is reset: its snapshots predate the change, and undoing into them would
+     * silently remove what the other side added.
+     */
+    private fun showExternalContent(content: NoteContent) {
+        undoStack.clear()
+        redoStack.clear()
+        lastTypingAt = 0L
+        _state.update { s ->
+            val fields = s.fields.mapNotNull { (key, field) ->
+                val block = NoteTables.textBlock(content, key) ?: return@mapNotNull null
+                val text = NoteTables.subContent(content, block).text
+                key to if (text == field.text) {
+                    field
+                } else {
+                    TextFieldValue(
+                        text,
+                        TextRange(NoteMerge.mapOffset(field.text, text, field.selection.start), NoteMerge.mapOffset(field.text, text, field.selection.end)),
+                    )
+                }
+            }.toMap()
+            s.copy(content = content, fields = syncFields(content, fields), canUndo = false, canRedo = false)
+        }
+    }
+
+    fun consumeNotice() = _state.update { it.copy(notice = null) }
 
     fun onTextChange(key: String, value: TextFieldValue) {
         val current = _state.value
@@ -344,19 +436,31 @@ class EditorViewModel(
     }
 
     private suspend fun flush() = saveMutex.withLock {
-        if (!dirty || _state.value.closed) return@withLock
-        dirty = false
-        val content = _state.value.content
-        if (content.isBlank) {
-            // Like Apple Notes, an emptied note simply disappears.
-            if (persisted) {
-                repository.deleteForever(noteId)
-                persisted = false
+        while (true) {
+            // Catch up with writes the observer hasn't delivered yet, so saving can't overwrite them.
+            val row = repository.noteRow(noteId)
+            if (row?.updatedAt != baseUpdatedAt) onStored(row)
+            if (!dirty || _state.value.closed) return@withLock
+            val content = _state.value.content
+            if (content.isBlank) {
+                // Like Apple Notes, an emptied note simply disappears.
+                dirty = false
+                if (persisted) {
+                    repository.deleteForever(noteId)
+                    persisted = false
+                    baseContent = null
+                    baseUpdatedAt = repository.noteRow(noteId)?.updatedAt
+                }
+                return@withLock
             }
-        } else {
-            val saved = repository.saveContent(noteId, route.folderId, content)
+            // Only stored if nobody wrote in between; otherwise go round again and reconcile.
+            val saved = repository.saveContentIfUnchanged(noteId, route.folderId, content, baseUpdatedAt) ?: continue
+            dirty = false
             persisted = true
+            baseContent = content
+            baseUpdatedAt = saved.updatedAt
             _state.update { it.copy(createdAt = saved.createdAt, modifiedAt = saved.modifiedAt) }
+            return@withLock
         }
     }
 

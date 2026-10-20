@@ -70,6 +70,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -152,8 +154,17 @@ fun EditorScreen(
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushNow() }
     LaunchedEffect(state.closed) { if (state.closed) onBack() }
+    val snackbar = remember { SnackbarHostState() }
+    val notice = state.notice?.let { stringResource(it) }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            snackbar.showSnackbar(notice)
+            viewModel.consumeNotice()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {},

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug builds only: simulates other writers (assistants, sync) changing a note. See ExternalEditReceiver. -->
+        <receiver
+            android:name="app.inknotes.debug.ExternalEditReceiver"
+            android:exported="true" />
+    </application>
+</manifest>
