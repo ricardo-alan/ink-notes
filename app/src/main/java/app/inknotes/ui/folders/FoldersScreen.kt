@@ -1,5 +1,7 @@
 package app.inknotes.ui.folders
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -243,6 +245,7 @@ private fun FolderNameDialog(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 label = { Text(stringResource(R.string.folder_name_hint)) },
                 modifier = Modifier.focusRequester(focus),
             )

@@ -1,5 +1,7 @@
 package app.inknotes.ui.editor
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -342,6 +344,8 @@ private fun TextBlock(
             onValueChange = onValueChange,
             textStyle = textStyle,
             visualTransformation = transformation,
+            // Capital letter at the start of the note, after Enter and after a period, like Apple Notes.
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             cursorBrush = SolidColor(colors.primary),
             onTextLayout = { layout = it },
             modifier = modifier

@@ -1,5 +1,7 @@
 package app.inknotes.ui.editor
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -137,6 +139,7 @@ private fun TableCell(
             onChange(it.text)
         },
         textStyle = textStyle,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         cursorBrush = SolidColor(colors.primary),
         modifier = Modifier
             .width(width)
