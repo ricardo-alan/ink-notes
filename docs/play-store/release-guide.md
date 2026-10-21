@@ -21,7 +21,7 @@ Antes de cada subida, sube `versionCode` en `app/build.gradle.kts` (1, 2, 3…) 
 ```
 
 Resultado: `app/build/outputs/bundle/release/app-release.aab`. Sin `keystore.properties` el bundle queda firmado con la clave de depuración y Play lo rechaza.
-
+	
 ## 3. Crear la app en Play Console
 
 Crear app → nombre "Ink Notes", idioma predeterminado, App, Gratis. Acepta las declaraciones.
@@ -49,7 +49,7 @@ Respuesta conservadora, porque las notas salen del dispositivo cuando el usuario
 - ¿El usuario puede pedir que se borren? **Sí** (desactivar sincronización y borrar los datos ocultos en Drive; desinstalar)
 - Tipos de datos:
   - **Información personal → Dirección de correo**: recopilado, no compartido, opcional, finalidad "Funcionalidad de la app" y "Administración de la cuenta"
-  - **Mensajes / contenido del usuario → Otro contenido generado por el usuario** (las notas): recopilado, no compartido, opcional, finalidad "Funcionalidad de la app"
+  - **Actividad en la app → Otro contenido generado por el usuario** (las notas): recopilado, no compartido, opcional, finalidad "Funcionalidad de la app"
 - No se procesan de forma efímera.
 
 ## 5. Ficha de Play Store
