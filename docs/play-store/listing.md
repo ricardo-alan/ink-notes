@@ -94,7 +94,7 @@ No ads. No tracking. No account required.
 - **Tags:** Notes, Productivity
 - **Contact email:** required, shown publicly on the listing
 - **Website:** optional (https://inknotes.app once the domain exists)
-- **Privacy policy URL:** required (public page with docs/play-store/privacy-policy.md)
+- **Privacy policy URL:** https://ricardo-alan.github.io/ink-notes/play-store/privacy-policy
 
 ## Graphics
 

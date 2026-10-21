@@ -32,7 +32,7 @@ Play App Signing queda activado por defecto: Google guarda la clave de firma fin
 
 | Sección | Respuesta |
 | --- | --- |
-| Política de privacidad | URL pública de `privacy-policy.md` |
+| Política de privacidad | https://ricardo-alan.github.io/ink-notes/play-store/privacy-policy |
 | Acceso a la app | Toda la funcionalidad está disponible sin acceso especial |
 | Anuncios | No contiene anuncios |
 | Clasificación de contenido | Categoría "Utilidad, productividad, comunicación u otro"; todas las respuestas "No" |
