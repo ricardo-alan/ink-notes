@@ -49,7 +49,7 @@ Si esta política cambia, se publicará aquí con una nueva fecha.
 
 ### Contacto
 
-CONTACT_EMAIL
+mrrahg@gmail.com
 
 ---
 
@@ -98,4 +98,4 @@ If this policy changes, the new version will be posted here with a new date.
 
 ### Contact
 
-CONTACT_EMAIL
+mrrahg@gmail.com
